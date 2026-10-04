@@ -22,16 +22,18 @@ You were asked to deploy SDD-Fabrik in the current repository. Do this:
    - `AGENTS.md`: append the block between `<!-- sdd-fabrik -->` and `<!-- /sdd-fabrik -->`;
    - `CLAUDE.md`: add a line `@AGENTS.md`;
    - `.gitattributes`: append its line, which keeps the script's line ends LF on Windows;
-   - a CI workflow: add the step of `.github/workflows/sdd.yml` to it, or keep both;
+   - a CI workflow: add its step and `fetch-depth: 0` from `.github/workflows/sdd.yml` to it, or keep both;
    - anything else: stop and ask the human.
 4. Replace `<tag>` on the first line of `sdd/README.md` with the tag you deployed.
 5. Run `bash sdd/bin/sdd install-hook`. If it declines because another hook is in place, show the human the line it
    printed.
-6. If your tool has a permission deny list, add `git commit`, `git push` and `--no-verify` to it. Tell the human that
-   for their other agents these rules are instructions only.
-7. Delete `<tmp>`. Then follow GENESIS (no code yet) or ADOPT (existing code) in `sdd/WORKFLOW.md`.
-8. Report the files added and merged, the dependencies, and a proposed commit message. Leave `Agent-Assisted` out of
-   it: the files come from the kit, not from you, and the script alone is over the size limit. The human commits.
+6. If your tool has a permission deny list, add `git commit`, `git push` and `--no-verify` to it. If it commits on its
+   own (Aider does by default, without hooks), turn that off. Tell the human that for their other agents these rules
+   are instructions only.
+7. Delete `<tmp>`. Report the files added and merged, the dependencies, and a proposed commit message with
+   `Large-Batch: deploys SDD-Fabrik` (the script alone is over the size limit) and without `Agent-Assisted` or an
+   agent's `Co-Authored-By` (the files come from the kit, not from you). The human commits.
+8. Then follow GENESIS (no code yet) or ADOPT (existing code) in `sdd/WORKFLOW.md`, as your first batch.
 
 To upgrade or uninstall, follow the last two sections of `sdd/WORKFLOW.md` in the deployed repository.
 

@@ -5,7 +5,7 @@ replaced on upgrade: project rules go in [coding-style.md](coding-style.md) or i
 
 ## Where things live
 
-One topic, one place; elsewhere, link. A file is created when first needed.
+A file is created when first needed.
 
 | Topic | Home |
 |---|---|
@@ -24,9 +24,9 @@ One topic, one place; elsewhere, link. A file is created when first needed.
 
 Ask the human, one question at a time: the first useful slice, for whom, the non-goals, whose coding conventions to
 follow (read them, do not guess), and the qualities that matter here: accessibility, devices, performance, cost,
-carbon. Measure real input before writing a contract that depends on it. Write only what the first slice needs:
-`README.md`, `coding-style.md` with its commands, one contract per module the slice touches. Scaffold with the stack's
-generator, then strip what the slice does not use. The first delivery follows COMPILE.
+carbon. Write only what the first slice needs: `README.md`, `coding-style.md` with its commands, one contract per
+module the slice touches. Scaffold with the stack's generator, then strip what the slice does not use. The first
+delivery follows COMPILE.
 
 ## ADOPT: existing code
 
@@ -95,21 +95,23 @@ depends: [tags]
 Intent, guarantees, constraints and non-goals. Links to the tests that prove them.
 ```
 
+Govern the code that carries the intent: leave CI, dependency and build files out unless the module is about them.
 At most 50 lines. Intent, never facts that a refactor keeping the behavior would change (SQL shapes, file layouts,
 JSON formats). Acceptance lives in the test names: no checkboxes, no status. `depends` names the modules this one
 builds on; check their tests pass before you do.
 
 ## Decisions
 
-`sdd/decisions.md`, numbered and append-only. Each entry gives the choice, its evidence, and a `Rejected:` line with
-the alternatives and why. A superseded entry shrinks to `n. Superseded by m.`; git keeps its text.
+`sdd/decisions.md`, numbered. Each entry gives the choice, its evidence, and a `Rejected:` line with the alternatives
+and why. Numbers never change and no entry is deleted: a superseded entry shrinks to `n. Superseded by m.`, and git
+keeps its text.
 
 ## Commit trailers
 
 | Trailer | Written by | Effect |
 |---|---|---|
 | `Agent-Assisted: yes` | the agent, in its proposed message | drift and size block, the quiz is required |
-| `Spec-Unchanged(<module>): <reason>` | the author | spares that module from the drift check |
+| `Spec-Unchanged(<module>): <reason>` | the author | spares that module from the drift check and the one-module limit |
 | `Large-Batch: <reason>` | the human | lifts the size limits (`MAX_LINES` in `sdd/bin/sdd`, one module) |
 | `Quiz: 3/3` | the hook | records the passed quiz |
 
@@ -117,16 +119,22 @@ A co-author address listed in `AGENT_EMAILS` (top of `sdd/bin/sdd`) counts as `A
 commit is the human's own: drift and size only warn. CI replays drift and size on every pushed commit, never the quiz.
 Everything here can be bypassed: it is there to help, not to lock.
 
+The hook compares the batch with HEAD: to amend an agent batch that changes files, run `git reset --soft HEAD^` and
+commit again. Merge pull requests with a merge commit or a rebase: a squash adds the batches up, so the size check
+fails on the default branch, or it drops their trailers.
+
 ## Upgrade (for agents)
 
 1. `git ls-remote --tags --refs https://github.com/GrIc/sdd-fabrik` gives the latest `vX.Y.Z`; the deployed one is on
    the first line of `sdd/README.md`.
 2. `git clone https://github.com/GrIc/sdd-fabrik <tmp>`; `git -C <tmp> diff <old> <new> -- template/` shows what
    changed. Then `git -C <tmp> checkout -q <new>`.
-3. Replace `sdd/WORKFLOW.md` and `sdd/bin/sdd` with the new tag's (keep a local `MAX_LINES` value), and the block
-   between `<!-- sdd-fabrik -->` and `<!-- /sdd-fabrik -->` in `AGENTS.md`. Put the new tag on the first line of
-   `sdd/README.md`. Delete `<tmp>`.
-4. Tell the human what changed and propose a commit message without `Agent-Assisted`: the files come from the kit.
+3. Replace `sdd/WORKFLOW.md` and `sdd/bin/sdd` with the new tag's (keep the project's changes to `MAX_LINES` and
+   `AGENT_EMAILS`), and the block between `<!-- sdd-fabrik -->` and `<!-- /sdd-fabrik -->` in `AGENTS.md`. Apply the
+   other template changes the diff shows, such as the CI workflow, with the human. Put the new tag on the first line
+   of `sdd/README.md`. Delete `<tmp>`.
+4. Tell the human what changed and propose a commit message without `Agent-Assisted` or an agent's `Co-Authored-By`:
+   the files come from the kit.
 
 ## Uninstall (for agents)
 

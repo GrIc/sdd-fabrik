@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # SDD-Fabrik checks: drift between contracts and code, batch size, and the quiz. See sdd/WORKFLOW.md.
-set -eu
+set -euf  # f: governs paths go to git as pathspecs, the shell must not expand them
 
 MAX_LINES=200
 
 # Co-author addresses that mark an agent batch, as an ERE alternation. Names are not enough: Claude is also a
 # first name. Any agent can mark its batch with Agent-Assisted: yes.
-AGENT_EMAILS='noreply@anthropic\.com'
+AGENT_EMAILS='noreply@anthropic\.com|noreply@openai\.com|aider@aider\.chat'
 
 EMPTY_TREE=$(git hash-object -t tree --stdin < /dev/null)
 
@@ -31,13 +31,6 @@ governs() {
     }'
 }
 
-# The first line of stdin inside one of the paths in $1 (files, or directories with or without their slash).
-first_under() {
-  PATHS=$1 awk '
-    BEGIN { n = split(ENVIRON["PATHS"], p, "\n"); for (i = 1; i <= n; i++) sub(/\/$/, "", p[i]) }
-    !found { for (i = 1; i <= n; i++) if ($0 == p[i] || index($0, p[i] "/") == 1) { print; found = 1; break } }'
-}
-
 # Checks the change from $1 to $2 (commits or trees) under the commit message $3.
 # Sets changed (the changed files), errors (fatal for everyone) and findings (fatal for agents only).
 check() {
@@ -57,11 +50,11 @@ check() {
 "
       continue
     fi
-    hit=$(first_under "$paths" <<< "$changed")
+    hit=$(git diff --name-only --no-renames "$base" "$tree" -- $paths | head -n 1)
     [ -n "$hit" ] || continue
+    grep -q "^Spec-Unchanged($module):[[:space:]]*[^[:space:]]" <<< "$msg" && continue
     touched=$((touched + 1))
     grep -qxF "$contract" <<< "$changed" && continue
-    grep -q "^Spec-Unchanged($module):[[:space:]]*[^[:space:]]" <<< "$msg" && continue
     findings="${findings}DRIFT $contract: $hit changed, its contract did not.
       Update the contract if the code is right, fix the code if it betrays the intent,
       or add 'Spec-Unchanged($module): <reason>' to the message if the behavior is unchanged.
@@ -82,7 +75,6 @@ check() {
   fi
 }
 
-# Prints what check found under message $1. Returns 1 when the commit must be refused.
 report() {
   if [ -n "$errors" ]; then
     printf '%s' "$errors$findings" >&2
@@ -96,7 +88,6 @@ report() {
   printf 'Warnings only, this is your own commit:\n%s' "$findings" >&2
 }
 
-# Identifies the staged batch: the tree and the commit it sits on.
 fingerprint() {
   printf '%s %s' "$(git write-tree)" "$(git rev-parse -q --verify HEAD || echo none)" | git hash-object --stdin
 }
@@ -136,11 +127,18 @@ quiz() {
   [ "$wrong" -eq 0 ] || fail "$((3 - wrong))/3. Change your answers in QUIZ.md, save, then commit again."
 }
 
-# Markdown of the harness against the code it governs: a guideline, never a gate.
+# The project's markdown against the code it governs: a guideline, never a gate. WORKFLOW.md is the kit's.
 size_report() {
-  local contract paths md code
-  paths=$(for contract in $(git ls-files 'sdd/modules/*.md'); do governs ":$contract"; done)
-  md=$(git grep -I -h -c -v -e '^[[:space:]]*$' -- 'sdd/*.md' AGENTS.md | awk '{ n += $1 } END { print n + 0 }')
+  local contract path paths= md code
+  for contract in $(git ls-files 'sdd/modules/*.md'); do
+    for path in $(governs ":$contract"); do
+      paths="$paths $path"
+      [ -n "$(git ls-files -- "$path" | head -n 1)" ] ||
+        echo "NOTE $contract: $path matches no tracked file, a typo or code still to come."
+    done
+  done
+  md=$(git grep -I -h -c -v -e '^[[:space:]]*$' -- 'sdd/*.md' AGENTS.md ':!sdd/WORKFLOW.md' |
+    awk '{ n += $1 } END { print n + 0 }')
   if [ -z "$paths" ]; then
     echo "SIZE $md lines of markdown, no contract yet."
     return
@@ -210,7 +208,8 @@ install_hook() {
   grep -qx '/QUIZ.md' "$exclude" 2> /dev/null || echo '/QUIZ.md' >> "$exclude"
   hook=$(git rev-parse --git-path hooks)/commit-msg
   if git config core.hooksPath > /dev/null || { [ -e "$hook" ] && ! grep -q '^# sdd-fabrik$' "$hook"; }; then
-    echo 'Another commit-msg hook is in place. Add this line to it: bash sdd/bin/sdd hook "$1"' >&2
+    echo "Your commit-msg hook is $hook, or the file your hook manager builds it from. Add this line to it:" >&2
+    echo '[ ! -f sdd/bin/sdd ] || bash sdd/bin/sdd hook "$1" || exit 1' >&2
     exit 1
   fi
   mkdir -p "$(dirname "$hook")"

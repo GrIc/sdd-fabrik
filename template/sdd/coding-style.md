@@ -39,7 +39,6 @@ when it comes cheap, never a goal in itself.
 
 ## Docs and commits
 
-- A fact is written once; elsewhere, link. Contracts hold intent, not facts the code already states.
 - Markdown prose up to 120 columns; tables, code blocks and URLs never wrapped. Diagrams in Mermaid, one per topic.
 - A commit message says what the batch does and, when it is not obvious, why. No flattering claims: each claim has its
   evidence.

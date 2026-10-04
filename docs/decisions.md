@@ -1,7 +1,7 @@
 # Decisions
 
-Append-only. A superseded entry shrinks to a line; git keeps its text. Field notes from the pilot (September 2026)
-are the evidence behind most entries.
+Numbers never change and no entry is deleted: a superseded entry shrinks to a line, and git keeps its text. Field
+notes from the pilot (September 2026) are the evidence behind most entries.
 
 ## 1. A harness, not a kit of guides (2026-10-03)
 
@@ -16,7 +16,7 @@ so drift becomes a ritual instead of a check).
 
 ## 3. Bash and git only (2026-10-03)
 
-git is already there; on Windows, Git for Windows brings bash, sed and awk. One script of about 200 lines lands in each
+git is already there; on Windows, Git for Windows brings bash, sed and awk. One script of about 240 lines lands in each
 project. _Rejected:_ Python (a 458-line runner was written: too heavy to copy into every project, and a runtime to
 install); the pre-commit framework (needs Python and pip).
 
@@ -39,9 +39,9 @@ is the project's. _Rejected:_ one `sdd/README.md` mixing the workflow and the pr
 ## 7. Two weights: agents are blocked, humans warned (2026-10-03)
 
 Constraints scale with how much of the change the human did not write. `Agent-Assisted: yes`, or a co-author address
-listed in `AGENT_EMAILS` (Claude Code's for now), marks a batch. _Rejected:_ the same rules for every commit (a human
-fixing a typo should not take a quiz); recognizing agents by name in `Co-Authored-By` (Claude is also a first name,
-and "agent" shows up in human names and addresses).
+listed in `AGENT_EMAILS` (Claude Code's, Codex's and Aider's), marks a batch. _Rejected:_ the same rules for every
+commit (a human fixing a typo should not take a quiz); recognizing agents by name in `Co-Authored-By` (Claude is also
+a first name, and "agent" shows up in human names and addresses); `Assisted-by:` as a mark (it can credit a human).
 
 ## 8. Drift per commit, waived per module (2026-10-03)
 
@@ -52,8 +52,10 @@ earlier drift); a global `No-Spec-Impact` (7 in 19 pilot commits, exempting whol
 ## 9. Small batches, by count (2026-10-03)
 
 An agent batch over 200 changed lines of code and tests, or touching more than one module, is refused unless the human
-adds `Large-Batch: <reason>`. On the pilot, 10 of 12 code commits stayed under 160 lines; the two above were the
-hardest to review. _Rejected:_ a guideline only; letting the agent judge its own batch.
+adds `Large-Batch: <reason>`. A module spared by `Spec-Unchanged` does not count: a file shared by two modules can
+change for one of them. On the pilot, 10 of 12 code commits stayed under 160 lines; the two above were the hardest to
+review. _Rejected:_ a guideline only; letting the agent judge its own batch (its `Spec-Unchanged` claims stand in the
+message the human reads and commits).
 
 ## 10. A quiz in a file (2026-10-03)
 
@@ -74,8 +76,9 @@ first needed. _Rejected:_ an `architecture/` folder; shipping empty files that r
 
 ## 13. `CLAUDE.md` imports `AGENTS.md` (2026-10-03)
 
-One line, `@AGENTS.md`, which Claude Code loads. _Rejected:_ a symlink (checked out as a text file on Windows by
-default); a sentence asking to read `AGENTS.md` (one more read to forget).
+One line, `@AGENTS.md`. Claude Code reads `AGENTS.md` by itself only when there is no `CLAUDE.md`. _Rejected:_ no
+`CLAUDE.md` (the first one a project adds would silently hide `AGENTS.md`); a symlink (checked out as a text file on
+Windows by default); a sentence asking to read `AGENTS.md` (one more read to forget).
 
 ## 14. Deny lists set by the deploying agent (2026-10-03)
 
@@ -105,3 +108,8 @@ Every batch on the kit goes through drift, size and the quiz, and the owner revi
 reads workflows only from `.github/workflows`, so the kit's audit job repeats the template's. _Rejected:_ a copy of
 the script (two sources to keep in step); a symlink (a text file on Windows by default, as in decision 13); no harness
 on the kit (the commit adding the script broke the size rule unnoticed).
+
+## 19. Incentives, not locks (2026-10-04)
+
+Every check can be bypassed: the harness helps an honest team see drift, size and understanding, it does not police
+it. _Rejected:_ CI running the base branch's script, so that a batch cannot loosen its own checks.

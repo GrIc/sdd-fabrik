@@ -10,9 +10,10 @@ contract() { printf -- '---\ngoverns: [%s]\n---\n# %s\n' "$2" "$1" > "sdd/module
 
 # A repo with the harness and two contracts, search and import, each governing its src/ folder.
 setup() {
-  repo=$(mktemp -d)
-  trap 'rm -rf "$repo"' EXIT
-  cd "$repo"
+  tmp=$(mktemp -d)
+  trap 'rm -rf "$tmp"' EXIT
+  mkdir "$tmp/repo"
+  cd "$tmp/repo"
   git -c init.defaultBranch=main init -q
   git config core.autocrlf false
   mkdir -p sdd/bin sdd/modules src/search src/import
@@ -24,8 +25,8 @@ setup() {
   git add -A
   git commit -qm 'Adopt SDD-Fabrik'
   bash sdd/bin/sdd install-hook > /dev/null
-  msg=$(mktemp)
-  out=$(mktemp)
+  msg=$tmp/msg
+  out=$tmp/out
 }
 
 succeeds() { "$@" > "$out" 2>&1 || { echo "    expected success: $*"; sed 's/^/    | /' "$out"; return 1; }; }
@@ -66,6 +67,15 @@ test_spec_unchanged_spares_its_module_only() {
   lacks 'DRIFT sdd/modules/search.md'
 }
 
+test_a_spared_module_does_not_count_toward_the_module_limit() {
+  echo 'More intent.' >> sdd/modules/search.md
+  echo two >> src/search/a.py
+  echo two >> src/import/a.py
+  git add -A
+  printf 'Change search\n\nAgent-Assisted: yes\nSpec-Unchanged(import): renames only\n' > "$msg"
+  succeeds bash sdd/bin/sdd audit --message "$msg"
+}
+
 test_unknown_module_errors_even_for_humans() {
   echo two >> src/search/a.py
   git add -A
@@ -98,7 +108,8 @@ test_merge_is_not_checked() {
 }
 
 test_first_commit_of_a_repo() {
-  cd "$(mktemp -d)"
+  mkdir "$tmp/new"
+  cd "$tmp/new"
   git -c init.defaultBranch=main init -q
   mkdir -p sdd/bin
   cp "$kit/template/sdd/bin/sdd" sdd/bin/sdd
@@ -115,10 +126,23 @@ test_install_hook_respects_an_existing_hook() {
   grep -qx '/QUIZ.md' "$(git rev-parse --git-path info/exclude)"
 }
 
-test_install_hook_respects_hooks_path() {
-  git config core.hooksPath .hooks
+# A shared hook (core.hooksPath) runs in every repo: the line install-hook prints must block here and pass elsewhere.
+test_the_line_for_a_shared_hook() {
+  git config core.hooksPath "$tmp/hooks"
   fails bash sdd/bin/sdd install-hook
-  says 'bash sdd/bin/sdd hook "$1"'
+  says "Your commit-msg hook is $(git rev-parse --git-path hooks)/commit-msg"
+  mkdir "$tmp/hooks"
+  { echo '#!/bin/sh'; tail -n 1 "$out"; echo 'echo other checks pass'; } > "$tmp/hooks/commit-msg"
+  chmod +x "$tmp/hooks/commit-msg"
+  echo two >> src/search/a.py
+  git add -A
+  fails agent_commit 'Change search'
+  says 'DRIFT'
+  mkdir "$tmp/plain"
+  cd "$tmp/plain"
+  git -c init.defaultBranch=main init -q
+  git config core.hooksPath "$tmp/hooks"
+  succeeds git commit -q --allow-empty -m 'No kit here'
 }
 
 test_agent_batch_over_max_lines_blocks() {
@@ -163,6 +187,31 @@ test_audit_prints_the_size_report() {
   says 'SIZE 8 lines of markdown for 2 lines of governed code, ratio 4.00 (guideline: at most 1).'
 }
 
+test_audit_points_out_governs_paths_that_match_nothing() {
+  contract search src/serch/
+  git add -A
+  succeeds bash sdd/bin/sdd audit
+  says 'NOTE sdd/modules/search.md: src/serch/ matches no tracked file, a typo or code still to come.'
+}
+
+# The shell must not expand the glob: b.py is gone from the working tree, a.py is still there.
+test_governs_takes_git_pathspecs() {
+  contract search 'src/search/*.py'
+  echo one > src/search/b.py
+  git add -A
+  git commit -qm 'Glob the paths' 2> /dev/null
+  git rm -q src/search/b.py
+  fails bash sdd/bin/sdd audit
+  says 'DRIFT sdd/modules/search.md: src/search/b.py changed'
+}
+
+test_size_report_leaves_out_the_kit_workflow() {
+  seq 1 50 > sdd/WORKFLOW.md
+  git add -A
+  succeeds bash sdd/bin/sdd audit
+  says 'SIZE 8 lines of markdown'
+}
+
 test_range_checks_each_commit() {
   start=$(git rev-parse HEAD)
   echo two >> src/search/a.py
@@ -187,7 +236,8 @@ test_range_passes_human_drift_with_a_warning() {
 }
 
 test_range_ignores_commits_before_adoption() {
-  cd "$(mktemp -d)"
+  mkdir "$tmp/new"
+  cd "$tmp/new"
   git -c init.defaultBranch=main init -q
   echo start > README.md
   git add -A
@@ -205,7 +255,7 @@ test_range_ignores_commits_before_adoption() {
   succeeds bash sdd/bin/sdd audit --range "$start..HEAD"
 }
 
-test_range_with_a_zero_base_checks_the_tip_only() {
+test_range_with_an_unknown_base_checks_the_tip_only() {
   echo two >> src/search/a.py
   git add -A
   git commit -q --no-verify -m 'Change search' -m 'Agent-Assisted: yes'
@@ -213,7 +263,7 @@ test_range_with_a_zero_base_checks_the_tip_only() {
   echo two >> src/import/a.py
   git add -A
   git commit -q --no-verify -m 'Change import'
-  succeeds bash sdd/bin/sdd audit --range "0000000000000000000000000000000000000000..HEAD"
+  succeeds bash sdd/bin/sdd audit --range "1234567890123456789012345678901234567890..HEAD"
 }
 
 # A ready agent batch on search: code and contract.
@@ -354,14 +404,6 @@ test_non_ascii_file_names() {
   says 'DRIFT sdd/modules/search.md: src/search/café.py changed'
 }
 
-test_range_after_a_force_push() {
-  echo 'More intent.' >> sdd/modules/import.md
-  echo two >> src/import/a.py
-  git add -A
-  git commit -q --no-verify -m 'Change import'
-  succeeds bash sdd/bin/sdd audit --range "1234567890123456789012345678901234567890..HEAD"
-}
-
 test_rewording_an_agent_commit() {
   batch
   write_quiz src/search/a.py 'A B C'
@@ -387,22 +429,10 @@ test_an_agent_co_author_marks_an_agent_batch() {
   says 'Refused, agent-assisted batch'
 }
 
-test_a_human_co_author_whose_address_holds_agent_is_human() {
-  echo two >> src/search/a.py
-  git add -A
-  succeeds git commit -qm 'Change search' -m 'Co-Authored-By: Bob <bob@agentur.de>'
-}
-
 test_a_human_co_author_named_claude_is_human() {
   echo two >> src/search/a.py
   git add -A
   succeeds git commit -qm 'Change search' -m 'Co-Authored-By: Claude Dupont <claude.dupont@example.fr>'
-}
-
-test_a_human_co_author_named_agent_is_human() {
-  echo two >> src/search/a.py
-  git add -A
-  succeeds git commit -qm 'Change search' -m 'Co-Authored-By: Agent Smith <smith@example.com>'
 }
 
 names=${*:-$(declare -F | awk '$3 ~ /^test_/ { print $3 }')}

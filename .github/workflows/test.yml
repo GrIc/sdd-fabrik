@@ -15,3 +15,13 @@ jobs:
       # /bin first: on macOS, /bin/bash is 3.2, the oldest bash the script supports.
       - run: PATH="/bin:$PATH" bash test/run
         shell: bash
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: bash sdd/bin/sdd audit --range "$BASE..$TIP"
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          TIP: ${{ github.event.pull_request.head.sha || github.sha }}

@@ -97,3 +97,11 @@ a mandatory fresh reviewer (blocks agents without sub-agents); a cast of persona
 The agent saves effort and tokens, never thought, and tells the human what it skipped. Lists follow their natural
 series (the pilot's word lists had gaps and strays found one by one in the data). Coverage follows Pareto too.
 _Rejected:_ fitting lists to the data alone; a coverage target.
+
+## 18. The kit runs its own harness (2026-10-04)
+
+`sdd/bin/sdd` runs the template's script, and one contract, `checks`, governs the script, its CI step and its tests.
+Every batch on the kit goes through drift, size and the quiz, and the owner reviews it before each commit. GitHub
+reads workflows only from `.github/workflows`, so the kit's audit job repeats the template's. _Rejected:_ a copy of
+the script (two sources to keep in step); a symlink (a text file on Windows by default, as in decision 13); no harness
+on the kit (the commit adding the script broke the size rule unnoticed).

@@ -1,0 +1,17 @@
+name: Tests
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      # /bin first: on macOS, /bin/bash is 3.2, the oldest bash the script supports.
+      - run: PATH="/bin:$PATH" bash test/run
+        shell: bash

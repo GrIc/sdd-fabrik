@@ -1,4 +1,4 @@
-# OS / éditeurs
+# OS and editors
 .DS_Store
 Thumbs.db
 *.swp
@@ -6,6 +6,6 @@ Thumbs.db
 .idea/
 .vscode/
 
-# Agents / outils (artefacts locaux, pas de contenu source)
+# Local agent and tool files
 .claude/
 .serena/

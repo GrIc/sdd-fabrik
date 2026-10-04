@@ -1,96 +1,56 @@
-# Sourcier — un kit de sources markdown vivantes → code compilé par agents
+# SDD-Fabrik
 
-**Le code est un artefact compilé d'une source markdown vivante.** Tu écris et
-révises l'intention (vision, contrats de comportement, décisions, issues) en
-markdown ; des agents (Claude Code, Antigravity, ou autres) *compilent* ce code
-à partir de cette source. La source reste la vérité de référence, révisée en
-continu — pas une spec figée générée une fois.
+A small harness for building software with coding agents. Intent lives in short markdown contracts next to the code.
+A git hook and a CI step catch code that drifts from its contract, batches too big to review, and agent work the
+human has not understood yet. Everything is an incentive: any check can be bypassed, on purpose.
 
-Zéro dépendance outil : que du markdown et `git`. **Humains et agents lisent et
-écrivent la même source** — un contributeur humain ouvre `source/`, un agent lit
-le même arbre via `CLAUDE.md` / `AGENTS.md`. Rien n'est réservé à l'un ou à
-l'autre.
+Needs only git (on Windows, Git for Windows, which brings bash, sed and awk). Works on Linux, macOS and Windows.
 
-Ce que Sourcier ajoute par rapport aux kits spec-driven classiques :
+## Deploy (for agents)
 
-- **Sources vivantes** — la spec est révisée en continu, elle ne se périme pas.
-- **Détection de dérive mécanique** — `git diff`, pas relecture humaine :
-  quand le code bouge sous une spec, c'est **calculé**, pas jugé.
-- **Réflexe INTAKE** — l'intention émergente (un bug, une idée lâchés en
-  passant) est happée au fil de la conversation, pas seulement les specs
-  délibérées.
-- **Quatre protocoles** reproductibles, exécutables par n'importe quel agent.
+You were asked to deploy SDD-Fabrik in the current repository. Do this:
 
----
+1. Check the dependencies: `git`, `bash`, `sed` and `awk`. If any is missing, tell the human which ones and how to
+   install them for their system, and stop.
+2. Fetch the latest release into a temporary directory, taking the highest `vX.Y.Z` from the first command:
 
-## Démarrer
+   ```
+   git ls-remote --tags --refs https://github.com/GrIc/sdd-fabrik
+   git clone --depth 1 --branch <tag> https://github.com/GrIc/sdd-fabrik <tmp>
+   ```
+3. Copy `<tmp>/template/` into the repository root without overwriting anything. Where a file already exists:
+   - `AGENTS.md`: append the block between `<!-- sdd-fabrik -->` and `<!-- /sdd-fabrik -->`;
+   - `CLAUDE.md`: add a line `@AGENTS.md`;
+   - `.gitattributes`: append its line, which keeps the script's line ends LF on Windows;
+   - a CI workflow: add the step of `.github/workflows/sdd.yml` to it, or keep both;
+   - anything else: stop and ask the human.
+4. Replace `<tag>` on the first line of `sdd/README.md` with the tag you deployed.
+5. Run `bash sdd/bin/sdd install-hook`. If it declines because another hook is in place, show the human the line it
+   printed.
+6. If your tool has a permission deny list, add `git commit`, `git push` and `--no-verify` to it. Tell the human that
+   for their other agents these rules are instructions only.
+7. Delete `<tmp>`. Then follow GENESIS (no code yet) or ADOPT (existing code) in `sdd/WORKFLOW.md`.
+8. Report the files added and merged, the dependencies, and a proposed commit message. Leave `Agent-Assisted` out of
+   it: the files come from the kit, not from you, and the script alone is over the size limit. The human commits.
 
-Copie le squelette [`template/`](template/) à la racine de ton projet, puis
-donne à ton agent le prompt d'amorçage correspondant à ton cas.
+To upgrade or uninstall, follow the last two sections of `sdd/WORKFLOW.md` in the deployed repository.
 
-### Mode A — nouveau projet (greenfield) → protocole GENESIS
+## How a batch flows
 
-Tu pars d'une idée, aucun code encore.
+1. The agent builds the smallest coherent change, updates its module contract or says why it stays, and runs the
+   checks.
+2. A fresh reviewer, a new agent context, reads the staged diff and writes `QUIZ.md`: three questions on the change.
+3. The human reads the diff, ticks the answers, and commits, from a terminal or an IDE.
+4. For an agent-assisted commit, the `commit-msg` hook checks that each contract moved with its code, that the batch
+   is small, and that the quiz is right. For the human's own commits, it only warns.
+5. CI replays drift and size on every pushed commit.
 
-```
-cp -r <chemin-vers-sdd-fabrik>/template/. .
-```
+## Why
 
-Puis, à ton agent (Claude Code, Antigravity, ou autre) :
+The decisions behind this design, with the alternatives we rejected, are in [docs/decisions.md](docs/decisions.md).
 
-> Lis `source/protocols/GENESIS.md` et joue-le avec moi. Interviewe-moi pour
-> dégager la vision, l'architecture et la roadmap ; écris `source/intent/` et
-> les premiers `source/modules/` en `status: draft` ; scaffolde le code et son
-> amorçage agent. Ne sur-spécifie pas.
+## Develop the kit
 
-### Mode B — projet existant (brownfield) → protocole ADOPT
+Edit `template/`, run `bash test/run`. See [AGENTS.md](AGENTS.md).
 
-Tu as déjà du code qui fait autorité.
-
-```
-cp -r <chemin-vers-sdd-fabrik>/template/. .     # sans écraser ton code
-```
-
-Puis, à ton agent :
-
-> Lis `source/protocols/ADOPT.md` et joue-le sur ce projet. Lis le code, déduis
-> les capacités, écris les specs `source/modules/` en `status: compiled` avec
-> `last-sync = HEAD`, migre les docs existants vers `source/intent/`. Le code
-> est la vérité de départ : décris-le tel qu'il est. Puis joue AUDIT pour
-> générer `source/SOURCE.md`.
-
-Une fois amorcé, le cycle de travail est : **COMPILE** (produire du code depuis
-une spec/issue prête) et **AUDIT** (le gardien : détecte la dérive, régénère
-l'index). Les quatre protocoles sont dans
-[`template/source/protocols/`](template/source/protocols/).
-
----
-
-## Topologies
-
-- **Monorepo (défaut)** — `source/` et le code dans le même repo. La spec et le
-  code voyagent dans le **même commit**. `sync-repo: .`.
-- **Détachée** — deux repos (ex. source privée / code public). Le même-commit
-  est impossible, donc **AUDIT** devient la défense principale. Chaque module
-  porte `sync-repo: <chemin-du-clone-code>`.
-
-Le [`template/CLAUDE.md`](template/CLAUDE.md) est en mode monorepo par défaut ;
-la variante détachée y est documentée en commentaire, prête à activer.
-
----
-
-## Où vit quoi
-
-- [`template/`](template/) — le squelette à copier dans ton projet.
-- [`protocols/`](protocols/) — **la source canonique** des quatre protocoles
-  (GENESIS, ADOPT, COMPILE, AUDIT). `template/source/protocols/` en est une
-  **copie**. Si tu modifies un protocole, édite `protocols/` puis recopie ; ne
-  maintiens pas les deux à la main.
-- [`docs/METHODOLOGY.md`](docs/METHODOLOGY.md) — la version longue : structure de
-  `source/`, frontmatter, anti-drift mécanique, INTAKE, réconciliation,
-  topologies.
-- [`docs/QUICKSTART.md`](docs/QUICKSTART.md) — le pas-à-pas des deux modes.
-
-## Licence
-
-MIT — voir [`LICENSE`](LICENSE).
+MIT licensed, see [LICENSE](LICENSE).

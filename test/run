@@ -1,0 +1,415 @@
+#!/usr/bin/env bash
+# Runs template/sdd/bin/sdd against throwaway git repos. Usage: bash test/run [test_name...]
+set -u
+
+kit=$(cd "$(dirname "$0")/.." && pwd)
+export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null
+export GIT_AUTHOR_NAME=Dev GIT_AUTHOR_EMAIL=dev@example.test GIT_COMMITTER_NAME=Dev GIT_COMMITTER_EMAIL=dev@example.test
+
+contract() { printf -- '---\ngoverns: [%s]\n---\n# %s\n' "$2" "$1" > "sdd/modules/$1.md"; }
+
+# A repo with the harness and two contracts, search and import, each governing its src/ folder.
+setup() {
+  repo=$(mktemp -d)
+  trap 'rm -rf "$repo"' EXIT
+  cd "$repo"
+  git -c init.defaultBranch=main init -q
+  git config core.autocrlf false
+  mkdir -p sdd/bin sdd/modules src/search src/import
+  cp "$kit/template/sdd/bin/sdd" sdd/bin/sdd
+  contract search src/search/
+  contract import src/import
+  echo one > src/search/a.py
+  echo one > src/import/a.py
+  git add -A
+  git commit -qm 'Adopt SDD-Fabrik'
+  bash sdd/bin/sdd install-hook > /dev/null
+  msg=$(mktemp)
+  out=$(mktemp)
+}
+
+succeeds() { "$@" > "$out" 2>&1 || { echo "    expected success: $*"; sed 's/^/    | /' "$out"; return 1; }; }
+fails() { if "$@" > "$out" 2>&1; then echo "    expected failure: $*"; sed 's/^/    | /' "$out"; return 1; fi; }
+says() { grep -qF -- "$1" "$out" || { echo "    output lacks: $1"; sed 's/^/    | /' "$out"; return 1; }; }
+lacks() { if grep -qF -- "$1" "$out"; then echo "    output has: $1"; sed 's/^/    | /' "$out"; return 1; fi; }
+agent_commit() { git commit -q -m "$1" -m 'Agent-Assisted: yes' "${@:2}"; }
+
+test_agent_drift_blocks() {
+  echo two >> src/search/a.py
+  git add -A
+  fails agent_commit 'Change search'
+  says 'DRIFT sdd/modules/search.md: src/search/a.py changed, its contract did not.'
+}
+
+test_human_drift_warns_and_commits() {
+  echo two >> src/search/a.py
+  git add -A
+  succeeds git commit -qm 'Change search'
+  says 'DRIFT sdd/modules/search.md'
+  [ "$(git log -1 --format=%s)" = 'Change search' ]
+}
+
+test_contract_in_the_batch_passes() {
+  echo two >> src/import/a.py
+  echo 'More intent.' >> sdd/modules/import.md
+  git add -A
+  succeeds bash sdd/bin/sdd audit
+}
+
+test_spec_unchanged_spares_its_module_only() {
+  echo two >> src/search/a.py
+  echo two >> src/import/a.py
+  git add -A
+  printf 'Rename\n\nAgent-Assisted: yes\nSpec-Unchanged(search): renames only\n' > "$msg"
+  fails bash sdd/bin/sdd audit --message "$msg"
+  says 'DRIFT sdd/modules/import.md'
+  lacks 'DRIFT sdd/modules/search.md'
+}
+
+test_unknown_module_errors_even_for_humans() {
+  echo two >> src/search/a.py
+  git add -A
+  fails git commit -qm 'Change search' -m 'Spec-Unchanged(serch): typo'
+  says 'there is no sdd/modules/serch.md'
+}
+
+test_multiline_governs_is_read_fully() {
+  printf -- '---\ngoverns:\n  [\n    src/search/a.py,\n    lib/search/,\n  ]\ndepends: [import]\n---\n# search\n' \
+    > sdd/modules/search.md
+  git add -A
+  git commit -qm 'Reshape the contract'
+  mkdir -p lib/search
+  echo one > lib/search/b.py
+  git add -A
+  fails bash sdd/bin/sdd audit
+  says 'DRIFT sdd/modules/search.md: lib/search/b.py changed'
+}
+
+test_merge_is_not_checked() {
+  git checkout -qb side
+  echo two >> src/import/a.py
+  git add -A
+  git commit -qm 'Side' 2> /dev/null
+  git checkout -q main
+  echo two >> src/search/a.py
+  git add -A
+  git commit -qm 'Main' 2> /dev/null
+  succeeds git merge -q --no-ff side -m 'Merge side' -m 'Agent-Assisted: yes'
+}
+
+test_first_commit_of_a_repo() {
+  cd "$(mktemp -d)"
+  git -c init.defaultBranch=main init -q
+  mkdir -p sdd/bin
+  cp "$kit/template/sdd/bin/sdd" sdd/bin/sdd
+  bash sdd/bin/sdd install-hook > /dev/null
+  git add -A
+  succeeds git commit -qm 'Start'
+}
+
+test_install_hook_respects_an_existing_hook() {
+  hook=$(git rev-parse --git-path hooks)/commit-msg
+  printf '#!/bin/sh\nexit 0\n' > "$hook"
+  fails bash sdd/bin/sdd install-hook
+  says 'bash sdd/bin/sdd hook "$1"'
+  grep -qx '/QUIZ.md' "$(git rev-parse --git-path info/exclude)"
+}
+
+test_install_hook_respects_hooks_path() {
+  git config core.hooksPath .hooks
+  fails bash sdd/bin/sdd install-hook
+  says 'bash sdd/bin/sdd hook "$1"'
+}
+
+test_agent_batch_over_max_lines_blocks() {
+  echo 'More intent.' >> sdd/modules/search.md
+  seq 1 201 > src/search/big.py
+  git add -A
+  fails bash sdd/bin/sdd audit
+  says 'SIZE 201 changed lines of code and tests, over 200.'
+}
+
+test_markdown_and_lockfiles_do_not_count() {
+  echo 'More intent.' >> sdd/modules/search.md
+  echo two >> src/search/a.py
+  seq 1 300 > notes.md
+  seq 1 300 > poetry.lock
+  git add -A
+  succeeds bash sdd/bin/sdd audit
+}
+
+test_two_modules_block_an_agent() {
+  echo 'More intent.' >> sdd/modules/search.md
+  echo 'More intent.' >> sdd/modules/import.md
+  echo two >> src/search/a.py
+  echo two >> src/import/a.py
+  git add -A
+  fails bash sdd/bin/sdd audit
+  says 'SIZE the batch changes code of 2 modules.'
+}
+
+test_large_batch_lifts_both_limits() {
+  echo 'More intent.' >> sdd/modules/search.md
+  echo 'More intent.' >> sdd/modules/import.md
+  seq 1 201 > src/search/big.py
+  echo two >> src/import/a.py
+  git add -A
+  printf 'Big\n\nAgent-Assisted: yes\nLarge-Batch: one rename across both modules\n' > "$msg"
+  succeeds bash sdd/bin/sdd audit --message "$msg"
+}
+
+test_audit_prints_the_size_report() {
+  succeeds bash sdd/bin/sdd audit
+  says 'SIZE 8 lines of markdown for 2 lines of governed code, ratio 4.00 (guideline: at most 1).'
+}
+
+test_range_checks_each_commit() {
+  start=$(git rev-parse HEAD)
+  echo two >> src/search/a.py
+  git add -A
+  git commit -q --no-verify -m 'Change search' -m 'Agent-Assisted: yes'
+  echo 'Later intent.' >> sdd/modules/search.md
+  git add -A
+  git commit -q --no-verify -m 'Touch the contract later'
+  fails bash sdd/bin/sdd audit --range "$start..HEAD"
+  says 'DRIFT sdd/modules/search.md'
+  says 'FAIL'
+  says 'OK   '
+}
+
+test_range_passes_human_drift_with_a_warning() {
+  start=$(git rev-parse HEAD)
+  echo two >> src/search/a.py
+  git add -A
+  git commit -q --no-verify -m 'Change search'
+  succeeds bash sdd/bin/sdd audit --range "$start..HEAD"
+  says 'Warnings only'
+}
+
+test_range_ignores_commits_before_adoption() {
+  cd "$(mktemp -d)"
+  git -c init.defaultBranch=main init -q
+  echo start > README.md
+  git add -A
+  git commit -qm 'Start'
+  start=$(git rev-parse HEAD)
+  mkdir -p src
+  seq 1 500 > src/big.py
+  git add -A
+  git commit -qm 'Before adoption' -m 'Agent-Assisted: yes'
+  mkdir -p sdd/bin sdd/modules
+  cp "$kit/template/sdd/bin/sdd" sdd/bin/sdd
+  printf -- '---\ngoverns: [src/]\n---\n# app\n' > sdd/modules/app.md
+  git add -A
+  git commit -qm 'Adopt'
+  succeeds bash sdd/bin/sdd audit --range "$start..HEAD"
+}
+
+test_range_with_a_zero_base_checks_the_tip_only() {
+  echo two >> src/search/a.py
+  git add -A
+  git commit -q --no-verify -m 'Change search' -m 'Agent-Assisted: yes'
+  echo 'More intent.' >> sdd/modules/import.md
+  echo two >> src/import/a.py
+  git add -A
+  git commit -q --no-verify -m 'Change import'
+  succeeds bash sdd/bin/sdd audit --range "0000000000000000000000000000000000000000..HEAD"
+}
+
+# A ready agent batch on search: code and contract.
+batch() {
+  echo two >> src/search/a.py
+  echo 'More intent.' >> sdd/modules/search.md
+  git add -A
+}
+
+# The reviewer's side: QUIZ.md citing file $1, and the key with answers $2 (like "A B C").
+write_quiz() {
+  local key a i
+  key=$(bash sdd/bin/sdd fingerprint | sed -n 's/^key: //p')
+  {
+    bash sdd/bin/sdd fingerprint | sed -n 's/^fingerprint: //p'
+    for a in $2; do echo "$a Because of $a."; done
+  } > "$key"
+  {
+    echo '# Quiz for this batch'
+    for i in 1 2 3; do
+      printf '\n## %s. Question %s?\n\nSee %s:1\n\n- [ ] one\n- [ ] two\n- [ ] three\n' "$i" "$i" "$1"
+    done
+  } > QUIZ.md
+}
+
+# The human's side: tick box $2 (A, B or C) of question $1, and clear its other boxes.
+tick() {
+  awk -v q="$1" -v pick="$2" '
+    /^## / { n++; box = 0 }
+    n == q && /^- \[[ x]\]/ { box++; sub(/\[[ x]\]/, substr("ABCD", box, 1) == pick ? "[x]" : "[ ]") }
+    { print }' QUIZ.md > QUIZ.tmp
+  mv QUIZ.tmp QUIZ.md
+}
+
+answer() { tick 1 "$1"; tick 2 "$2"; tick 3 "$3"; }
+
+test_quiz_passed_adds_the_trailer_and_cleans_up() {
+  batch
+  write_quiz src/search/a.py 'A B C'
+  answer A B C
+  succeeds agent_commit 'Change search'
+  git log -1 --format=%B | grep -qx 'Quiz: 3/3'
+  [ ! -e QUIZ.md ]
+  [ ! -e "$(git rev-parse --git-path sdd/quiz-key)" ]
+}
+
+test_wrong_answer_explains_then_a_retry_passes() {
+  batch
+  write_quiz src/search/a.py 'A B C'
+  answer A C C
+  fails agent_commit 'Change search'
+  says 'Question 2 is wrong. Because of B.'
+  says 'Reread src/search/a.py:1'
+  says '2/3.'
+  [ -e QUIZ.md ]
+  answer A B C
+  succeeds agent_commit 'Change search'
+}
+
+test_stale_quiz_is_refused() {
+  batch
+  write_quiz src/search/a.py 'A B C'
+  answer A B C
+  echo three >> src/search/a.py
+  git add -A
+  fails agent_commit 'Change search'
+  says 'Stale quiz'
+}
+
+test_missing_quiz_is_refused() {
+  batch
+  fails agent_commit 'Change search'
+  says 'No quiz for this agent-assisted batch'
+}
+
+test_one_box_per_question() {
+  batch
+  write_quiz src/search/a.py 'A B C'
+  answer A B C
+  tick 1 C
+  # Question 1 now has C and A ticked.
+  awk '!done && /- \[ \] one/ { sub(/\[ \]/, "[x]"); done = 1 } { print }' QUIZ.md > QUIZ.tmp
+  mv QUIZ.tmp QUIZ.md
+  fails agent_commit 'Change search'
+  says 'Tick exactly one box for question 1'
+}
+
+test_question_must_cite_the_batch() {
+  batch
+  write_quiz README.md 'A B C'
+  answer A B C
+  fails agent_commit 'Change search'
+  says "Question 1 needs a 'See <file>:<line>' line pointing to a file of this batch."
+}
+
+test_human_commit_needs_no_quiz() {
+  batch
+  succeeds git commit -qm 'Change search'
+}
+
+test_quiz_files_with_crlf() {
+  batch
+  write_quiz src/search/a.py 'A B C'
+  answer A B C
+  key=$(git rev-parse --git-path sdd/quiz-key)
+  awk '{ printf "%s\r\n", $0 }' QUIZ.md > QUIZ.tmp && mv QUIZ.tmp QUIZ.md
+  awk '{ printf "%s\r\n", $0 }' "$key" > key.tmp && mv key.tmp "$key"
+  succeeds agent_commit 'Change search'
+}
+
+test_quiz_trailer_with_editor_comments() {
+  batch
+  write_quiz src/search/a.py 'A B C'
+  answer A B C
+  printf 'Change search\n\nAgent-Assisted: yes\n' > "$msg"
+  GIT_EDITOR=true succeeds git commit -q -e -F "$msg"
+  git log -1 --format=%B | grep -qx 'Quiz: 3/3'
+  git log -1 --format=%B | grep -qx 'Agent-Assisted: yes'
+}
+
+test_script_survives_a_crlf_checkout() {
+  cp "$kit/template/.gitattributes" .gitattributes
+  git add -A
+  git commit -qm 'Pin line ends' 2> /dev/null
+  git config core.autocrlf true
+  rm sdd/bin/sdd
+  git checkout -- sdd/bin/sdd
+  echo 'More intent.' >> sdd/modules/search.md
+  echo two >> src/search/a.py
+  git add -A 2> /dev/null
+  succeeds git commit -qm 'Change search'
+}
+
+test_non_ascii_file_names() {
+  echo one > src/search/café.py
+  git add -A
+  fails bash sdd/bin/sdd audit
+  says 'DRIFT sdd/modules/search.md: src/search/café.py changed'
+}
+
+test_range_after_a_force_push() {
+  echo 'More intent.' >> sdd/modules/import.md
+  echo two >> src/import/a.py
+  git add -A
+  git commit -q --no-verify -m 'Change import'
+  succeeds bash sdd/bin/sdd audit --range "1234567890123456789012345678901234567890..HEAD"
+}
+
+test_rewording_an_agent_commit() {
+  batch
+  write_quiz src/search/a.py 'A B C'
+  answer A B C
+  git commit -q -m 'Change search' -m 'Agent-Assisted: yes'
+  succeeds git commit -q --amend -m 'Change search, reworded' -m 'Agent-Assisted: yes'
+}
+
+test_quoted_governs_paths() {
+  printf -- '---\ngoverns: ["src/search/", '"'"'src/import'"'"']\n---\n# search\n' > sdd/modules/search.md
+  git add -A
+  git commit -qm 'Quote the paths' 2> /dev/null
+  echo two >> src/import/a.py
+  git add -A
+  fails bash sdd/bin/sdd audit
+  says 'DRIFT sdd/modules/search.md: src/import/a.py changed'
+}
+
+test_an_agent_co_author_marks_an_agent_batch() {
+  echo two >> src/search/a.py
+  git add -A
+  fails git commit -qm 'Change search' -m 'Co-Authored-By: Claude <noreply@anthropic.com>'
+  says 'Refused, agent-assisted batch'
+}
+
+test_a_human_co_author_whose_address_holds_agent_is_human() {
+  echo two >> src/search/a.py
+  git add -A
+  succeeds git commit -qm 'Change search' -m 'Co-Authored-By: Bob <bob@agentur.de>'
+}
+
+test_a_human_co_author_named_claude_is_human() {
+  echo two >> src/search/a.py
+  git add -A
+  succeeds git commit -qm 'Change search' -m 'Co-Authored-By: Claude Dupont <claude.dupont@example.fr>'
+}
+
+test_a_human_co_author_named_agent_is_human() {
+  echo two >> src/search/a.py
+  git add -A
+  succeeds git commit -qm 'Change search' -m 'Co-Authored-By: Agent Smith <smith@example.com>'
+}
+
+names=${*:-$(declare -F | awk '$3 ~ /^test_/ { print $3 }')}
+failed=0
+for t in $names; do
+  ( set -e; setup; "$t" )
+  if [ $? -eq 0 ]; then echo "ok   $t"; else echo "FAIL $t"; failed=$((failed + 1)); fi
+done
+echo "$failed failed"
+[ "$failed" -eq 0 ]

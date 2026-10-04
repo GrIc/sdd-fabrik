@@ -1,0 +1,240 @@
+#!/usr/bin/env bash
+# SDD-Fabrik checks: drift between contracts and code, batch size, and the quiz. See sdd/WORKFLOW.md.
+set -eu
+
+MAX_LINES=200
+
+# Co-author addresses that mark an agent batch, as an ERE alternation. Names are not enough: Claude is also a
+# first name. Any agent can mark its batch with Agent-Assisted: yes.
+AGENT_EMAILS='noreply@anthropic\.com'
+
+EMPTY_TREE=$(git hash-object -t tree --stdin < /dev/null)
+
+# Paths with accents print as they are, not as quoted octal escapes.
+git() { command git -c core.quotePath=false "$@"; }
+
+is_agent() {
+  grep -Eiq "^Agent-Assisted:[[:space:]]*yes[[:space:]]*\$|^Co-Authored-By:.*<($AGENT_EMAILS)>" <<< "$1"
+}
+
+# Paths listed in a contract's governs, one per line. $1 is a revision path such as HEAD:sdd/modules/search.md.
+governs() {
+  git show "$1" | tr -d "\r\"'" | awk '
+    /^---[[:space:]]*$/ { fm++; next }
+    fm == 1 && /^governs:/ { on = 1 }
+    fm == 1 && on {
+      last = /\]/
+      sub(/^governs:[[:space:]]*/, "")
+      gsub(/[][,]/, " ")
+      for (i = 1; i <= NF; i++) print $i
+      if (last) on = 0
+    }'
+}
+
+# The first line of stdin inside one of the paths in $1 (files, or directories with or without their slash).
+first_under() {
+  PATHS=$1 awk '
+    BEGIN { n = split(ENVIRON["PATHS"], p, "\n"); for (i = 1; i <= n; i++) sub(/\/$/, "", p[i]) }
+    !found { for (i = 1; i <= n; i++) if ($0 == p[i] || index($0, p[i] "/") == 1) { print; found = 1; break } }'
+}
+
+# Checks the change from $1 to $2 (commits or trees) under the commit message $3.
+# Sets changed (the changed files), errors (fatal for everyone) and findings (fatal for agents only).
+check() {
+  local base=$1 tree=$2 msg=$3 module contract paths hit touched=0 lines
+  errors= findings=
+  changed=$(git diff --name-only --no-renames "$base" "$tree")
+  for module in $(sed -n 's/^Spec-Unchanged(\([^)]*\)):.*/\1/p' <<< "$msg"); do
+    git cat-file -e "$tree:sdd/modules/$module.md" 2> /dev/null ||
+      errors="${errors}ERROR Spec-Unchanged($module): there is no sdd/modules/$module.md.
+"
+  done
+  for contract in $(git ls-tree -r --name-only "$tree" sdd/modules/ | awk '/\.md$/'); do
+    module=$(basename "$contract" .md)
+    paths=$(governs "$tree:$contract")
+    if [ -z "$paths" ]; then
+      errors="${errors}ERROR $contract: governs is empty. List the paths this module owns.
+"
+      continue
+    fi
+    hit=$(first_under "$paths" <<< "$changed")
+    [ -n "$hit" ] || continue
+    touched=$((touched + 1))
+    grep -qxF "$contract" <<< "$changed" && continue
+    grep -q "^Spec-Unchanged($module):[[:space:]]*[^[:space:]]" <<< "$msg" && continue
+    findings="${findings}DRIFT $contract: $hit changed, its contract did not.
+      Update the contract if the code is right, fix the code if it betrays the intent,
+      or add 'Spec-Unchanged($module): <reason>' to the message if the behavior is unchanged.
+"
+  done
+  grep -q '^Large-Batch:[[:space:]]*[^[:space:]]' <<< "$msg" && return 0
+  lines=$(git diff --numstat --no-renames "$base" "$tree" |
+    awk -F '\t' '$1 != "-" && $3 !~ /(\.md|\.lock|lock\.json|lock\.yaml)$/ { n += $1 + $2 } END { print n + 0 }')
+  if [ "$lines" -gt "$MAX_LINES" ]; then
+    findings="${findings}SIZE $lines changed lines of code and tests, over $MAX_LINES.
+      Split the batch, or the human adds 'Large-Batch: <reason>' to the message.
+"
+  fi
+  if [ "$touched" -gt 1 ]; then
+    findings="${findings}SIZE the batch changes code of $touched modules.
+      Split it by module, or the human adds 'Large-Batch: <reason>' to the message.
+"
+  fi
+}
+
+# Prints what check found under message $1. Returns 1 when the commit must be refused.
+report() {
+  if [ -n "$errors" ]; then
+    printf '%s' "$errors$findings" >&2
+    return 1
+  fi
+  [ -n "$findings" ] || return 0
+  if is_agent "$1"; then
+    printf 'Refused, agent-assisted batch:\n%s' "$findings" >&2
+    return 1
+  fi
+  printf 'Warnings only, this is your own commit:\n%s' "$findings" >&2
+}
+
+# Identifies the staged batch: the tree and the commit it sits on.
+fingerprint() {
+  printf '%s %s' "$(git write-tree)" "$(git rev-parse -q --verify HEAD || echo none)" | git hash-object --stdin
+}
+
+quiz_key() { git rev-parse --git-path sdd/quiz-key; }
+
+fail() {
+  printf '%s\n' "$1" >&2
+  exit 1
+}
+
+# Checks the boxes ticked in QUIZ.md against the reviewer's key. Needs changed, set by check.
+quiz() {
+  local key answers wrong=0 i boxes ticks pick see expected
+  key=$(quiz_key)
+  [ -f QUIZ.md ] && [ -f "$key" ] ||
+    fail 'No quiz for this agent-assisted batch: ask the fresh reviewer for QUIZ.md (see sdd/WORKFLOW.md).'
+  [ "$(head -n 1 "$key" | tr -d '\r')" = "$(fingerprint)" ] ||
+    fail 'Stale quiz: the batch changed since the review. Ask the reviewer for a new QUIZ.md.'
+  [ "$(grep -c '^## ' QUIZ.md)" -eq 3 ] || fail 'QUIZ.md needs three questions, each under a "## " heading.'
+  answers=$(tr -d '\r' < QUIZ.md | awk '
+    /^## / { q++; boxes[q] = 0; ticks[q] = 0; pick[q] = "-"; see[q] = "-"; next }
+    q && /^See / { see[q] = substr($0, 5) }
+    q && /^- \[[ xX]\]/ { boxes[q]++; if (/^- \[[xX]\]/) { ticks[q]++; pick[q] = substr("ABCD", boxes[q], 1) } }
+    END { for (i = 1; i <= q; i++) print i, boxes[i], ticks[i], pick[i], see[i] }')
+  while read -r i boxes ticks pick see; do
+    grep -qxF "${see%:*}" <<< "$changed" ||
+      fail "Question $i needs a 'See <file>:<line>' line pointing to a file of this batch."
+    [ "$boxes" -ge 2 ] && [ "$boxes" -le 4 ] || fail "Question $i needs 2 to 4 boxes."
+    [ "$ticks" -eq 1 ] || fail "Tick exactly one box for question $i in QUIZ.md, save, then commit again."
+    expected=$(sed -n "$((i + 1))p" "$key" | tr -d '\r')
+    if [ "$pick" != "${expected%% *}" ]; then
+      wrong=$((wrong + 1))
+      printf 'Question %s is wrong. %s\n  Reread %s\n' "$i" "${expected#* }" "$see" >&2
+    fi
+  done <<< "$answers"
+  [ "$wrong" -eq 0 ] || fail "$((3 - wrong))/3. Change your answers in QUIZ.md, save, then commit again."
+}
+
+# Markdown of the harness against the code it governs: a guideline, never a gate.
+size_report() {
+  local contract paths md code
+  paths=$(for contract in $(git ls-files 'sdd/modules/*.md'); do governs ":$contract"; done)
+  md=$(git grep -I -h -c -v -e '^[[:space:]]*$' -- 'sdd/*.md' AGENTS.md | awk '{ n += $1 } END { print n + 0 }')
+  if [ -z "$paths" ]; then
+    echo "SIZE $md lines of markdown, no contract yet."
+    return
+  fi
+  code=$(git grep -I -h -c -v -e '^[[:space:]]*$' -- $paths ':!*.md' | awk '{ n += $1 } END { print n + 0 }')
+  LC_ALL=C awk -v md="$md" -v code="$code" 'BEGIN {
+    printf "SIZE %d lines of markdown for %d lines of governed code, ratio %.2f (guideline: at most 1).\n",
+      md, code, code ? md / code : 0 }'
+}
+
+hook() {
+  local msg base
+  # Finishing a merge: its commits were checked one by one.
+  [ ! -f "$(git rev-parse --git-path MERGE_HEAD)" ] || return 0
+  msg=$(grep -v '^#' "$1" || true)
+  base=$(git rev-parse -q --verify HEAD || echo "$EMPTY_TREE")
+  check "$base" "$(git write-tree)" "$msg"
+  report "$msg" || exit 1
+  is_agent "$msg" || return 0
+  # A reword or an amend that changes no file leaves nothing to quiz on.
+  [ -n "$changed" ] || return 0
+  quiz
+  git interpret-trailers --in-place --trailer 'Quiz: 3/3' "$1"
+  rm -f QUIZ.md "$(quiz_key)"
+}
+
+# Without a message file, the batch is judged as an agent's with no trailers.
+audit_staged() {
+  local msg='Agent-Assisted: yes' base status=0
+  [ -z "${1:-}" ] || msg=$(cat "$1")
+  base=$(git rev-parse -q --verify HEAD || echo "$EMPTY_TREE")
+  check "$base" "$(git write-tree)" "$msg"
+  if report "$msg"; then echo 'OK: the staged batch passes the checks.'; else status=1; fi
+  size_report
+  return $status
+}
+
+# CI: each commit of the range, with its own message.
+audit_range() {
+  local base=${1%%..*} tip=${1#*..} commits c parent msg status=0
+  # A base git does not know (a new branch, a force-push) audits the tip only.
+  if git cat-file -e "$base^{commit}" 2> /dev/null; then
+    commits=$(git rev-list --reverse --no-merges "$1")
+  else
+    commits=$(git rev-parse "$tip")
+  fi
+  for c in $commits; do
+    # Commits from before the harness was adopted are not its business.
+    git cat-file -e "$c:sdd/bin/sdd" 2> /dev/null || continue
+    parent=$(git rev-parse -q --verify "$c^" || echo "$EMPTY_TREE")
+    msg=$(git log -1 --format=%B "$c")
+    check "$parent" "$c" "$msg"
+    if report "$msg"; then
+      echo "OK   $(git log -1 --format='%h %s' "$c")"
+    else
+      echo "FAIL $(git log -1 --format='%h %s' "$c")"
+      status=1
+    fi
+  done
+  return $status
+}
+
+install_hook() {
+  local hook exclude
+  exclude=$(git rev-parse --git-path info/exclude)
+  mkdir -p "$(dirname "$exclude")"
+  grep -qx '/QUIZ.md' "$exclude" 2> /dev/null || echo '/QUIZ.md' >> "$exclude"
+  hook=$(git rev-parse --git-path hooks)/commit-msg
+  if git config core.hooksPath > /dev/null || { [ -e "$hook" ] && ! grep -q '^# sdd-fabrik$' "$hook"; }; then
+    echo 'Another commit-msg hook is in place. Add this line to it: bash sdd/bin/sdd hook "$1"' >&2
+    exit 1
+  fi
+  mkdir -p "$(dirname "$hook")"
+  printf '#!/bin/sh\n# sdd-fabrik\nexec bash sdd/bin/sdd hook "$1"\n' > "$hook"
+  chmod +x "$hook"
+  echo "Installed $hook."
+}
+
+case ${1:-} in
+  hook) hook "$2" ;;
+  audit)
+    case ${2:-} in
+      --message) audit_staged "$3" ;;
+      --range) audit_range "$3" ;;
+      *) audit_staged ;;
+    esac ;;
+  fingerprint)
+    mkdir -p "$(dirname "$(quiz_key)")"
+    echo "fingerprint: $(fingerprint)"
+    echo 'quiz: QUIZ.md'
+    echo "key: $(quiz_key)" ;;
+  install-hook) install_hook ;;
+  *)
+    echo 'usage: bash sdd/bin/sdd hook <message-file> | audit [--message <file> | --range <base>..<tip>]' >&2
+    echo '       bash sdd/bin/sdd fingerprint | install-hook' >&2
+    exit 2 ;;
+esac

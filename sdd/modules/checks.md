@@ -14,8 +14,8 @@ check can be bypassed.
   contract, or a contract with an empty `governs`, stops every commit. `governs` entries are git pathspecs, and `audit`
   points out the ones that match no tracked file.
 - Size: at most `MAX_LINES` changed lines of code and tests, and one module, unless `Large-Batch: <reason>`.
-- Quiz: three questions on the staged batch in `QUIZ.md`, graded offline against a key bound to the staged tree and
-  HEAD.
+- Quiz: three questions on the staged batch in `QUIZ.md`, graded offline against a key. A batch changed since the
+  quiz was written gets a warning, not a refusal.
 - CI replays drift and size on each new commit, never the quiz.
 
 Constraints: bash 3.2, the one macOS ships (no `mapfile`, no associative arrays, no `${var,,}`), and git with POSIX

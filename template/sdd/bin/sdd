@@ -31,6 +31,10 @@ governs() {
     }'
 }
 
+modules() {
+  git ls-tree --name-only "$1" sdd/modules/ | awk -F/ 'sub(/\.md$/, "", $NF) { printf "%s%s", sep, $NF; sep = ", " }'
+}
+
 # Checks the change from $1 to $2 (commits or trees) under the commit message $3.
 # Sets changed (the changed files), errors (fatal for everyone) and findings (fatal for agents only).
 check() {
@@ -39,7 +43,7 @@ check() {
   changed=$(git diff --name-only --no-renames "$base" "$tree")
   for module in $(sed -n 's/^Spec-Unchanged(\([^)]*\)):.*/\1/p' <<< "$msg"); do
     git cat-file -e "$tree:sdd/modules/$module.md" 2> /dev/null ||
-      errors="${errors}ERROR Spec-Unchanged($module): there is no sdd/modules/$module.md.
+      errors="${errors}ERROR Spec-Unchanged($module): no such module. Modules: $(modules "$tree").
 "
   done
   for contract in $(git ls-tree -r --name-only "$tree" sdd/modules/ | awk '/\.md$/'); do
@@ -106,7 +110,7 @@ quiz() {
   [ -f QUIZ.md ] && [ -f "$key" ] ||
     fail 'No quiz for this agent-assisted batch: ask the fresh reviewer for QUIZ.md (see sdd/WORKFLOW.md).'
   [ "$(head -n 1 "$key" | tr -d '\r')" = "$(fingerprint)" ] ||
-    fail 'Stale quiz: the batch changed since the review. Ask the reviewer for a new QUIZ.md.'
+    echo 'The batch changed since the quiz was written. If your changes touch what it asks, ask for a new one.' >&2
   [ "$(grep -c '^## ' QUIZ.md)" -eq 3 ] || fail 'QUIZ.md needs three questions, each under a "## " heading.'
   answers=$(tr -d '\r' < QUIZ.md | awk '
     /^## / { q++; boxes[q] = 0; ticks[q] = 0; pick[q] = "-"; see[q] = "-"; next }

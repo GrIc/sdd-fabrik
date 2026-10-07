@@ -1,9 +1,11 @@
 # Coding style
 
 How code is written in this project. Each question gets one answer, written here and applied to the whole code base:
-never one practice in a file and another elsewhere. Start at GENESIS or ADOPT from the conventions to follow, read in
-the team's code, never guessed. When the code raises a question this file does not answer, settle it with the human,
-add the rule here and apply it everywhere. Formatters and linters enforce what they can.
+never one practice in a file and another elsewhere. Start at GENESIS or ADOPT from the conventions to follow: the
+team's code or the conventions it follows, or, from scratch, the stack's standards and best practices (its style
+guide, its default formatter and linter). Never guessed: write them here, so the project sticks to them. When the code
+raises a question this file does not answer, settle it with the human, add the rule here and apply it everywhere.
+Formatters and linters enforce what they can.
 
 ## Project rules
 

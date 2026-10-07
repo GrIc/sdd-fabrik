@@ -62,7 +62,8 @@ message the human reads and commits).
 The reviewer writes `QUIZ.md` (boxes to tick) and a key hidden in `.git/`; the hook grades it. The human commits from a
 terminal or an IDE button. _Rejected:_ questions asked on the terminal (no terminal behind IDE commit buttons, nor
 reliably on Windows); hashed answers (the hidden key is enough for an incentive); free-text answers (fragile matching);
-review attestations checked by CI (they forbid amend, rebase and squash-merge).
+review attestations checked by CI (they forbid amend, rebase and squash-merge). A batch changed since its quiz
+only warns (2026-10-07): refusing it cost an LLM call for each small edit.
 
 ## 11. No status, no checkboxes in contracts (2026-10-03)
 

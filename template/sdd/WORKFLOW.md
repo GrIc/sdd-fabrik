@@ -43,12 +43,13 @@ text.
    project's checks.
 3. Update the contract if the intent changed. Otherwise propose `Spec-Unchanged(<module>): <reason>`.
 4. Read the whole diff against the coding style and delete what does not earn its place.
-5. Stage the batch, write the proposed message to a file, and run `bash sdd/bin/sdd audit --message <file>`.
+5. Stage the batch, write the proposed message with `Agent-Assisted: yes` to `.git/sdd/message`, and run
+   `bash sdd/bin/sdd audit --message .git/sdd/message`.
 6. Review: spawn a fresh reviewer, a new context that did not write the batch. It reads the staged diff, the contract
    and the coding style, reports findings with their evidence, and writes the quiz once the findings are fixed. If your
    tool cannot spawn one, write the quiz yourself and say so.
-7. Hand off: purpose, the decisions you took alone, evidence, limits, a short "understand this" for the human, and the
-   proposed commit message with `Agent-Assisted: yes`. The human reads the diff, answers `QUIZ.md` and commits.
+7. Hand off: purpose, the decisions you took alone, evidence, limits and a short "understand this" for the human. The
+   human reads the diff, answers `QUIZ.md` and commits with `git commit -F .git/sdd/message`.
 
 ## Quiz
 
@@ -80,8 +81,8 @@ text.
   A "30" after hours counts as minutes.
   ```
 
-The commit fails until all three boxes are right; each wrong answer shows its explanation. Any change to the staged
-batch makes the quiz stale.
+The commit fails until all three boxes are right; each wrong answer shows its explanation. If the batch changed
+since the quiz was written, the hook only warns: ask for a new quiz when the changes touch what it asks.
 
 ## Contracts
 

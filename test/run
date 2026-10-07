@@ -80,7 +80,7 @@ test_unknown_module_errors_even_for_humans() {
   echo two >> src/search/a.py
   git add -A
   fails git commit -qm 'Change search' -m 'Spec-Unchanged(serch): typo'
-  says 'there is no sdd/modules/serch.md'
+  says 'ERROR Spec-Unchanged(serch): no such module. Modules: import, search.'
 }
 
 test_multiline_governs_is_read_fully() {
@@ -305,6 +305,7 @@ test_quiz_passed_adds_the_trailer_and_cleans_up() {
   write_quiz src/search/a.py 'A B C'
   answer A B C
   succeeds agent_commit 'Change search'
+  lacks 'The batch changed'
   git log -1 --format=%B | grep -qx 'Quiz: 3/3'
   [ ! -e QUIZ.md ]
   [ ! -e "$(git rev-parse --git-path sdd/quiz-key)" ]
@@ -323,14 +324,14 @@ test_wrong_answer_explains_then_a_retry_passes() {
   succeeds agent_commit 'Change search'
 }
 
-test_stale_quiz_is_refused() {
+test_a_quiz_older_than_the_batch_only_warns() {
   batch
   write_quiz src/search/a.py 'A B C'
   answer A B C
   echo three >> src/search/a.py
   git add -A
-  fails agent_commit 'Change search'
-  says 'Stale quiz'
+  succeeds agent_commit 'Change search'
+  says 'The batch changed since the quiz was written'
 }
 
 test_missing_quiz_is_refused() {

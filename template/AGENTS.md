@@ -13,7 +13,7 @@ Be lazy with effort, never with thought.
 
 - Go straight to the goal: read only what the task needs, write the least code that does it, stop when it is done.
 - No work nobody asked for: no extra refactor, option, test or document. Mention it in one line instead.
-- Spend tokens like money: short answers, no restating, no summary of what you just did.
+- Spend tokens like money: short answers, no restating.
 - Fully transparent with the human: what you did, what you skipped, what you assumed, what you could not check.
 
 ### House rules

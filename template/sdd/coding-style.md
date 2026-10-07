@@ -1,7 +1,21 @@
 # Coding style
 
-Whose conventions this project follows, and the commands that check them. Filled at GENESIS or ADOPT from the
-conventions the team already uses; the stack's tools decide formatting.
+How code is written in this project. Each question gets one answer, written here and applied to the whole code base:
+never one practice in a file and another elsewhere. Start at GENESIS or ADOPT from the conventions to follow, read in
+the team's code, never guessed. When the code raises a question this file does not answer, settle it with the human,
+add the rule here and apply it everywhere. Formatters and linters enforce what they can.
+
+## Project rules
+
+| Question | Rule |
+|---|---|
+| Formatter, linter | to settle |
+| Indentation, line width | per language: to settle; markdown prose wraps at 120, never tables, code blocks or URLs |
+| Naming, file layout | to settle; names say what they hold or do |
+| Comments | rare, they say why: no comment restating the code, no banner, no commented-out code |
+| Errors | to settle |
+| Diagrams | Mermaid, one per topic |
+| Commit messages | what the batch does and, when it is not obvious, why |
 
 ## Every line earns its place
 
@@ -14,7 +28,6 @@ worse without it. Otherwise it goes.
   at startup.
 - Pareto: a heuristic covers 95 to 98% of real cases. For the rest, rethink the approach instead of piling up
   exceptions. Security, data integrity and explicit requirements are never in the remaining few percent.
-- Names say what; the rare comment says why. No comment restating the code, no banner, no dead code.
 
 Before proposing a batch, its author, human or agent, reads the whole diff against these rules and deletes what fails
 them.
@@ -36,12 +49,6 @@ Test as well as possible, with Pareto applied to coverage too. Weigh each test: 
 costs, to write and run, and for the human to review. The code that matters (the rules the contract promises, data
 integrity, money, security) is always covered well. Beyond it, a test stays while it pays for itself: 100% is fine
 when it comes cheap, never a goal in itself.
-
-## Docs and commits
-
-- Markdown prose up to 120 columns; tables, code blocks and URLs never wrapped. Diagrams in Mermaid, one per topic.
-- A commit message says what the batch does and, when it is not obvious, why. No flattering claims: each claim has its
-  evidence.
 
 ## Commands
 

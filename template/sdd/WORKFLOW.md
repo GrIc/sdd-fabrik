@@ -23,10 +23,10 @@ A file is created when first needed.
 ## GENESIS: a new project
 
 Ask the human, one question at a time: the first useful slice, for whom, the non-goals, whose coding conventions to
-follow (read them, do not guess), and the qualities that matter here: accessibility, devices, performance, cost,
-carbon. Write only what the first slice needs: `README.md`, `coding-style.md` with its commands, one contract per
-module the slice touches. Scaffold with the stack's generator, then strip what the slice does not use. The first
-delivery follows COMPILE.
+follow, and the qualities that matter here: accessibility, devices, performance, cost, carbon. Write only what the
+first slice needs: `README.md`, `coding-style.md` with its first rules and commands, one contract per module the
+slice touches. Scaffold with the stack's generator, then strip what the slice does not use. The first delivery follows
+COMPILE.
 
 ## ADOPT: existing code
 

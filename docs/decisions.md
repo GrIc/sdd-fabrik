@@ -68,7 +68,8 @@ only warns (2026-10-07): refusing it cost an LLM call for each small edit.
 ## 11. No status, no checkboxes in contracts (2026-10-03)
 
 Acceptance lives in test names, and a module is done when its tests pass. _Rejected:_ `status: compiled` (forgotten
-for a day on two pilot modules); acceptance boxes that restate the specs.
+for a day on two pilot modules); acceptance boxes that restate the specs. Acceptance now lives in contracts,
+linked to the tests that prove it (2026-10-07, decision 20).
 
 ## 12. Flat, optional topic files (2026-10-03)
 
@@ -93,8 +94,8 @@ a mandatory fresh reviewer (blocks agents without sub-agents); a cast of persona
 
 ## 16. No phase-id check (2026-10-03)
 
-"Status lives only in the roadmap" stays a rule in `AGENTS.md`. _Rejected:_ grepping phase ids outside the roadmap
-(the pattern differs per project and would need a setting).
+"The order of the work lives only in the roadmap" stays a rule in `AGENTS.md`. _Rejected:_ grepping phase ids outside
+the roadmap (the pattern differs per project and would need a setting).
 
 ## 17. A lazy agent writing human-shaped code (2026-10-03)
 
@@ -114,3 +115,14 @@ on the kit (the commit adding the script broke the size rule unnoticed).
 
 Every check can be bypassed: the harness helps an honest team see drift, size and understanding, it does not police
 it. _Rejected:_ CI running the base branch's script, so that a batch cannot loosen its own checks.
+
+## 20. Work in several batches (2026-10-07)
+
+Work that takes more than one batch is planned in `sdd/changes/<slug>.md`: its why, then one section per batch with
+the criteria it makes true. A fresh reviewer checks the plan and the human validates it. Each batch moves its criteria
+into its module's contract and deletes its section, so the file holds only what is left; empty, it goes with its line
+in `sdd/roadmap.md`, which only orders the work. Then a fresh reviewer reads each touched module whole, for a refactor
+batch when it pays. A criterion is a plain sentence linked to the tests that prove it, and a link to a missing test or
+file is drift. _Rejected:_ the whole plan in `roadmap.md` (it grows with the history and is read at every session);
+checkboxes (stored status); planned criteria inside contracts (a contract that is not true yet); a When/Then template
+(not how people write specs); a squad of personas (more tokens, no proven gain over one builder and a fresh reviewer).

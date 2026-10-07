@@ -18,7 +18,7 @@ Be lazy with effort, never with thought.
 
 ### House rules
 
-- One topic, one place; elsewhere, link. Status and phases live only in `sdd/roadmap.md`.
+- One topic, one place; elsewhere, link. The order of the work lives only in `sdd/roadmap.md`.
 - Reuse before building: the platform, then the framework, then a maintained library whose license and weight you
   checked; your own code last.
 - Measure real input before specifying behavior that depends on it, and cite the numbers.

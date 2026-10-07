@@ -39,13 +39,14 @@ To upgrade or uninstall, follow the last two sections of `sdd/WORKFLOW.md` in th
 
 ## How a batch flows
 
-1. The agent builds the smallest coherent change, updates its module contract or says why it stays, and runs the
+1. For work of several batches, the agent first writes a plan the human validates: `sdd/changes/<slug>.md`.
+2. The agent builds the smallest coherent change, updates its module contract or says why it stays, and runs the
    checks.
-2. A fresh reviewer, a new agent context, reads the staged diff and writes `QUIZ.md`: three questions on the change.
-3. The human reads the diff, ticks the answers, and commits, from a terminal or an IDE.
-4. For an agent-assisted commit, the `commit-msg` hook checks that each contract moved with its code, that the batch
+3. A fresh reviewer, a new agent context, reads the staged diff and writes `QUIZ.md`: three questions on the change.
+4. The human reads the diff, ticks the answers, and commits, from a terminal or an IDE.
+5. For an agent-assisted commit, the `commit-msg` hook checks that each contract moved with its code, that the batch
    is small, and that the quiz is right. For the human's own commits, it only warns.
-5. CI replays drift and size on every pushed commit.
+6. CI replays drift and size on every pushed commit.
 
 ## Why
 

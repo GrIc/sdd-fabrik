@@ -15,10 +15,11 @@ A file is created when first needed.
 | Code, tests, docs and commit conventions, project commands | `sdd/coding-style.md` |
 | System design, data, deployment | `sdd/architecture.md` |
 | Decisions, with what was rejected | `sdd/decisions.md` |
-| Status, phases, someday | `sdd/roadmap.md`, and nowhere else |
-| What a module must do | `sdd/modules/<module>.md` |
+| Order of the work, someday | `sdd/roadmap.md`: one line and link per change, and nowhere else |
+| A piece of work in several batches | `sdd/changes/<slug>.md`, deleted once delivered |
+| What a module must do, its acceptance | `sdd/modules/<module>.md`, linked to the tests that prove it |
 | Bugs and ideas caught in passing | `sdd/issues/<slug>.md` |
-| Acceptance, implementation facts | test names, code |
+| Implementation facts | code and tests |
 
 ## GENESIS: a new project
 
@@ -26,7 +27,7 @@ Ask the human, one question at a time: the first useful slice, for whom, the non
 follow, and the qualities that matter here: accessibility, devices, performance, cost, carbon. Write only what the
 first slice needs: `README.md`, `coding-style.md` with its first rules and commands, one contract per module the
 slice touches. Scaffold with the stack's generator, then strip what the slice does not use. The first delivery follows
-COMPILE.
+PLAN or COMPILE.
 
 ## ADOPT: existing code
 
@@ -35,21 +36,46 @@ map, a coding style drawn from what the code already does, and contracts only wh
 and tests, with `governs` paths checked by `git ls-files`. Changes you would like to make become issues, not contract
 text.
 
+## PLAN: work of several batches
+
+Work that takes more than one batch gets `sdd/changes/<slug>.md` and its line in `sdd/roadmap.md`. An issue taken up
+moves into the change's why and is deleted.
+
+```markdown
+# Search by tag
+
+Why: the reader picks a few tags and gets the articles that carry them.
+
+## Rank articles by matching tags (search)
+
+- Articles that carry every tag come first.
+```
+
+One `## <title> (<module>)` section per batch, in order, with the criteria the batch makes true. A fresh reviewer
+checks that each batch fits the size limit, touches one module and has testable criteria; the human validates the
+plan, which is committed with its first batch. The first section left is the next batch. The batch that empties the
+file deletes it and its roadmap line; then a fresh reviewer reads each module the change touched as a whole and
+proposes a refactor batch only when it pays.
+
 ## COMPILE: one batch
 
 1. Read the intent, the contract, its tests and the code. Ask the open intent questions. When behavior depends on real
    input, measure it with a throwaway script first, and stop at the approach that covers 95 to 98% of real cases.
 2. Build the smallest coherent change, with the tests it deserves ([coding style](coding-style.md#tests)). Run the
    project's checks.
-3. Update the contract if the intent changed. Otherwise propose `Spec-Unchanged(<module>): <reason>`.
+3. Update the contract if the intent changed. A batch from a plan moves its criteria into its module's contract, in
+   place of what they restate, and deletes its section; a batch without a module drops them. Otherwise propose
+   `Spec-Unchanged(<module>): <reason>`.
 4. Read the whole diff against the coding style and delete what does not earn its place.
 5. Stage the batch, write the proposed message with `Agent-Assisted: yes` to `.git/sdd/message`, and run
    `bash sdd/bin/sdd audit --message .git/sdd/message`.
 6. Review: spawn a fresh reviewer, a new context that did not write the batch. It reads the staged diff, the contract
-   and the coding style, reports findings with their evidence, and writes the quiz once the findings are fixed. If your
-   tool cannot spawn one, write the quiz yourself and say so.
+   and the coding style, reports findings with their evidence, and writes the quiz once the findings are fixed.
 7. Hand off: purpose, the decisions you took alone, evidence, limits and a short "understand this" for the human. The
    human reads the diff, answers `QUIZ.md` and commits with `git commit -F .git/sdd/message`.
+
+Wherever a fresh reviewer is asked for (plan, batch, module), a tool that cannot spawn one does its part itself and
+says so.
 
 ## Quiz
 
@@ -93,13 +119,18 @@ depends: [tags]
 ---
 # search
 
-Intent, guarantees, constraints and non-goals. Links to the tests that prove them.
+Intent, constraints and non-goals, then the criteria.
+
+- A misspelled term of 4 letters or more is corrected to the closest name:
+  [test_corrects_a_misspelled_term](../../tests/test_search.py).
 ```
 
 Govern the code that carries the intent: leave CI, dependency and build files out unless the module is about them.
 At most 50 lines. Intent, never facts that a refactor keeping the behavior would change (SQL shapes, file layouts,
-JSON formats). Acceptance lives in the test names: no checkboxes, no status. `depends` names the modules this one
-builds on; check their tests pass before you do.
+JSON formats). A criterion is a plain sentence, then links to the tests that prove it: a test name, a group, or the
+whole file with its name or path as the link text, relative to the contract or from the repo root. Several criteria
+may share a test; a criterion without a link is checked by hand, as its sentence says. No checkboxes, no status.
+`depends` names the modules this one builds on; check their tests pass before you do.
 
 ## Decisions
 
@@ -116,9 +147,11 @@ keeps its text.
 | `Large-Batch: <reason>` | the human | lifts the size limits (`MAX_LINES` in `sdd/bin/sdd`, one module) |
 | `Quiz: 3/3` | the hook | records the passed quiz |
 
-A co-author address listed in `AGENT_EMAILS` (top of `sdd/bin/sdd`) counts as `Agent-Assisted: yes`. Any other
-commit is the human's own: drift and size only warn. CI replays drift and size on every pushed commit, never the quiz.
-Everything here can be bypassed: it is there to help, not to lock.
+A co-author address listed in `AGENT_EMAILS` (top of `sdd/bin/sdd`) counts as `Agent-Assisted: yes`; any other commit
+is the human's own. The script prints ERROR when every commit must stop; DRIFT (code against its contract, or a
+contract link to a missing test or file) and SIZE, which refuse an agent batch and only warn on the human's own; and
+NOTE, guidance that never refuses. CI replays drift and size on every pushed commit, never the quiz. Everything here
+can be bypassed: it is there to help, not to lock.
 
 The hook compares the batch with HEAD: to amend an agent batch that changes files, run `git reset --soft HEAD^` and
 commit again. Merge pull requests with a merge commit or a rebase: a squash adds the batches up, so the size check

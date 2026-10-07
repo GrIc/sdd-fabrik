@@ -52,6 +52,9 @@ costs, to write and run, and for the human to review. The code that matters (the
 integrity, money, security) is always covered well. Beyond it, a test stays while it pays for itself: 100% is fine
 when it comes cheap, never a goal in itself.
 
+A test proves a behavior through the public interface, so it survives a refactor. One test may cover several criteria,
+and tests on the same subject share a file or a group. No micro test for each micro change: TDD yes, micro testing no.
+
 ## Commands
 
 | Check | Command |

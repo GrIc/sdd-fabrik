@@ -38,7 +38,7 @@ modules() {
 # Checks the change from $1 to $2 (commits or trees) under the commit message $3.
 # Sets changed (the changed files), errors (fatal for everyone) and findings (fatal for agents only).
 check() {
-  local base=$1 tree=$2 msg=$3 module contract paths hit touched=0 lines
+  local base=$1 tree=$2 msg=$3 module contract paths drift hit touched=0 lines
   errors= findings=
   changed=$(git diff --name-only --no-renames "$base" "$tree")
   for module in $(sed -n 's/^Spec-Unchanged(\([^)]*\)):.*/\1/p' <<< "$msg"); do
@@ -54,6 +54,10 @@ check() {
 "
       continue
     fi
+    drift=$(links "$tree" "$contract")
+    [ -z "$drift" ] || findings="${findings}$drift
+      Fix the link, or the name of the test it points to.
+"
     hit=$(git diff --name-only --no-renames "$base" "$tree" -- $paths | head -n 1)
     [ -n "$hit" ] || continue
     grep -q "^Spec-Unchanged($module):[[:space:]]*[^[:space:]]" <<< "$msg" && continue
@@ -110,7 +114,7 @@ quiz() {
   [ -f QUIZ.md ] && [ -f "$key" ] ||
     fail 'No quiz for this agent-assisted batch: ask the fresh reviewer for QUIZ.md (see sdd/WORKFLOW.md).'
   [ "$(head -n 1 "$key" | tr -d '\r')" = "$(fingerprint)" ] ||
-    echo 'The batch changed since the quiz was written. If your changes touch what it asks, ask for a new one.' >&2
+    echo 'NOTE The batch changed since the quiz was written. If your changes touch what it asks, ask for a new one.' >&2
   [ "$(grep -c '^## ' QUIZ.md)" -eq 3 ] || fail 'QUIZ.md needs three questions, each under a "## " heading.'
   answers=$(tr -d '\r' < QUIZ.md | awk '
     /^## / { q++; boxes[q] = 0; ticks[q] = 0; pick[q] = "-"; see[q] = "-"; next }
@@ -131,8 +135,33 @@ quiz() {
   [ "$wrong" -eq 0 ] || fail "$((3 - wrong))/3. Change your answers in QUIZ.md, save, then commit again."
 }
 
-# The project's markdown against the code it governs: a guideline, never a gate. WORKFLOW.md is the kit's.
-size_report() {
+# Drift between contract $2 and the tests it links, in tree $1: a linked file the tree lacks, or a name the file lacks.
+links() {
+  local link text target file
+  git show "$1:$2" | tr '\r\n' '  ' | tr -s ' ' | grep -o '\[[^]]*\]([^)]*)' | while IFS= read -r link; do
+    text=${link#[}
+    text=${text%%](*}
+    target=${link#*](}
+    target=${target%)}
+    target=${target%%#*}
+    case $target in '' | *:* | *.md | */) continue ;; esac
+    # A target is relative to the contract, or starts at the repo root.
+    case $target in
+      /*) file=$(git ls-tree --name-only "$1" -- "${target#/}" 2> /dev/null) ;;
+      *) file=$(git -C "${2%/*}" ls-tree --full-name --name-only "$1" -- "$target" 2> /dev/null) ;;
+    esac
+    if [ -z "$file" ]; then
+      echo "DRIFT $2: links \"$text\" to $target, a file the commit does not have."
+    elif [ "$(git cat-file -t "$1:$file")" = blob ] && [ "$text" != "${file##*/}" ] && [ "$text" != "$file" ] &&
+      ! git show "$1:$file" | grep -qwF -- "$text"; then
+      echo "DRIFT $2: links \"$text\", not found in $file."
+    fi
+  done
+}
+
+# Guidance for the agent, never a refusal: governs paths that match nothing, and the project's markdown against the
+# code it governs (WORKFLOW.md is the kit's).
+guidance() {
   local contract path paths= md code
   for contract in $(git ls-files 'sdd/modules/*.md'); do
     for path in $(governs ":$contract"); do
@@ -144,12 +173,12 @@ size_report() {
   md=$(git grep -I -h -c -v -e '^[[:space:]]*$' -- 'sdd/*.md' AGENTS.md ':!sdd/WORKFLOW.md' |
     awk '{ n += $1 } END { print n + 0 }')
   if [ -z "$paths" ]; then
-    echo "SIZE $md lines of markdown, no contract yet."
+    echo "NOTE $md lines of markdown, no contract yet."
     return
   fi
   code=$(git grep -I -h -c -v -e '^[[:space:]]*$' -- $paths ':!*.md' | awk '{ n += $1 } END { print n + 0 }')
   LC_ALL=C awk -v md="$md" -v code="$code" 'BEGIN {
-    printf "SIZE %d lines of markdown for %d lines of governed code, ratio %.2f (guideline: at most 1).\n",
+    printf "NOTE %d lines of markdown for %d lines of governed code, ratio %.2f (guideline: at most 1).\n",
       md, code, code ? md / code : 0 }'
 }
 
@@ -176,7 +205,7 @@ audit_staged() {
   base=$(git rev-parse -q --verify HEAD || echo "$EMPTY_TREE")
   check "$base" "$(git write-tree)" "$msg"
   if report "$msg"; then echo 'OK: the staged batch passes the checks.'; else status=1; fi
-  size_report
+  guidance
   return $status
 }
 

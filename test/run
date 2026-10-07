@@ -184,7 +184,7 @@ test_large_batch_lifts_both_limits() {
 
 test_audit_prints_the_size_report() {
   succeeds bash sdd/bin/sdd audit
-  says 'SIZE 8 lines of markdown for 2 lines of governed code, ratio 4.00 (guideline: at most 1).'
+  says 'NOTE 8 lines of markdown for 2 lines of governed code, ratio 4.00 (guideline: at most 1).'
 }
 
 test_audit_points_out_governs_paths_that_match_nothing() {
@@ -205,11 +205,50 @@ test_governs_takes_git_pathspecs() {
   says 'DRIFT sdd/modules/search.md: src/search/b.py changed'
 }
 
+# A contract for search whose criterion links to $1.
+linked_contract() {
+  printf -- '---\ngoverns: [src/search/]\n---\n# search\n\n- Some behavior: %s\n' "$1" > sdd/modules/search.md
+}
+
+test_a_link_to_a_missing_file_is_drift() {
+  linked_contract '[test_x](/tests/test_missing.py).'
+  git add -A
+  fails bash sdd/bin/sdd audit
+  says 'DRIFT sdd/modules/search.md: links "test_x" to /tests/test_missing.py, a file the commit does not have.'
+}
+
+test_a_link_to_a_missing_test_name_is_drift() {
+  mkdir -p tests
+  echo 'def test_x_twice():' > tests/test_search.py
+  linked_contract '[test_x](/tests/test_search.py), [a missing
+  name](/tests/test_search.py).'
+  git add -A
+  fails bash sdd/bin/sdd audit
+  says 'DRIFT sdd/modules/search.md: links "test_x", not found in tests/test_search.py.'
+  says 'DRIFT sdd/modules/search.md: links "a missing name", not found in tests/test_search.py.'
+  succeeds git commit -qm 'Link the tests'
+  says 'Warnings only'
+}
+
+test_audit_accepts_links_to_names_groups_and_files() {
+  mkdir -p tests
+  printf 'class TestTagSearch:\n    def test_typo(self):\n        """corrects a misspelled term"""\n' > tests/test_search.py
+  linked_contract '[corrects a misspelled
+  term](../../tests/test_search.py), [TestTagSearch](/tests/test_search.py#top), [test_search.py](/tests/test_search.py),
+  [tests/test_search.py](../../tests/test_search.py), [the docs](https://example.com/docs), [workflow](../WORKFLOW.md),
+  [the search code](/src/search/), [the tests](/tests).'
+  # Written on Windows: CRLF must not split the wrapped link.
+  awk '{ printf "%s\r\n", $0 }' sdd/modules/search.md > crlf.md && mv crlf.md sdd/modules/search.md
+  git add -A
+  succeeds bash sdd/bin/sdd audit
+  lacks 'DRIFT'
+}
+
 test_size_report_leaves_out_the_kit_workflow() {
   seq 1 50 > sdd/WORKFLOW.md
   git add -A
   succeeds bash sdd/bin/sdd audit
-  says 'SIZE 8 lines of markdown'
+  says 'NOTE 8 lines of markdown'
 }
 
 test_range_checks_each_commit() {
@@ -331,7 +370,7 @@ test_a_quiz_older_than_the_batch_only_warns() {
   echo three >> src/search/a.py
   git add -A
   succeeds agent_commit 'Change search'
-  says 'The batch changed since the quiz was written'
+  says 'NOTE The batch changed since the quiz was written'
 }
 
 test_missing_quiz_is_refused() {

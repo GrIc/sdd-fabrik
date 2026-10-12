@@ -8,13 +8,14 @@ export GIT_AUTHOR_NAME=Dev GIT_AUTHOR_EMAIL=dev@example.test GIT_COMMITTER_NAME=
 
 contract() { printf -- '---\ngoverns: [%s]\n---\n# %s\n' "$2" "$1" > "sdd/modules/$1.md"; }
 
+# An empty repo in $tmp/$1, the working directory from then on.
+new_repo() { mkdir "$tmp/$1" && cd "$tmp/$1" && git -c init.defaultBranch=main init -q; }
+
 # A repo with the harness and two contracts, search and import, each governing its src/ folder.
 setup() {
   tmp=$(mktemp -d)
   trap 'rm -rf "$tmp"' EXIT
-  mkdir "$tmp/repo"
-  cd "$tmp/repo"
-  git -c init.defaultBranch=main init -q
+  new_repo repo
   git config core.autocrlf false
   mkdir -p sdd/bin sdd/modules src/search src/import
   cp "$kit/template/sdd/bin/sdd" sdd/bin/sdd
@@ -33,7 +34,7 @@ succeeds() { "$@" > "$out" 2>&1 || { echo "    expected success: $*"; sed 's/^/ 
 fails() { if "$@" > "$out" 2>&1; then echo "    expected failure: $*"; sed 's/^/    | /' "$out"; return 1; fi; }
 says() { grep -qF -- "$1" "$out" || { echo "    output lacks: $1"; sed 's/^/    | /' "$out"; return 1; }; }
 lacks() { if grep -qF -- "$1" "$out"; then echo "    output has: $1"; sed 's/^/    | /' "$out"; return 1; fi; }
-agent_commit() { git commit -q -m "$1" -m 'Agent-Assisted: yes' "${@:2}"; }
+agent_commit() { git commit -q -m "$1" -m 'Agent-Assisted: yes'; }
 
 test_agent_drift_blocks() {
   echo two >> src/search/a.py
@@ -48,13 +49,6 @@ test_human_drift_warns_and_commits() {
   succeeds git commit -qm 'Change search'
   says 'DRIFT sdd/modules/search.md'
   [ "$(git log -1 --format=%s)" = 'Change search' ]
-}
-
-test_contract_in_the_batch_passes() {
-  echo two >> src/import/a.py
-  echo 'More intent.' >> sdd/modules/import.md
-  git add -A
-  succeeds bash sdd/bin/sdd audit
 }
 
 test_spec_unchanged_spares_its_module_only() {
@@ -76,11 +70,15 @@ test_a_spared_module_does_not_count_toward_the_module_limit() {
   succeeds bash sdd/bin/sdd audit --message "$msg"
 }
 
-test_unknown_module_errors_even_for_humans() {
+test_errors_stop_even_a_human_commit() {
   echo two >> src/search/a.py
   git add -A
   fails git commit -qm 'Change search' -m 'Spec-Unchanged(serch): typo'
   says 'ERROR Spec-Unchanged(serch): no such module. Modules: import, search.'
+  contract import ''
+  git add -A
+  fails git commit -qm 'Change search'
+  says 'ERROR sdd/modules/import.md: governs is empty.'
 }
 
 test_multiline_governs_is_read_fully() {
@@ -108,9 +106,7 @@ test_merge_is_not_checked() {
 }
 
 test_first_commit_of_a_repo() {
-  mkdir "$tmp/new"
-  cd "$tmp/new"
-  git -c init.defaultBranch=main init -q
+  new_repo new
   mkdir -p sdd/bin
   cp "$kit/template/sdd/bin/sdd" sdd/bin/sdd
   bash sdd/bin/sdd install-hook > /dev/null
@@ -138,19 +134,19 @@ test_the_line_for_a_shared_hook() {
   git add -A
   fails agent_commit 'Change search'
   says 'DRIFT'
-  mkdir "$tmp/plain"
-  cd "$tmp/plain"
-  git -c init.defaultBranch=main init -q
+  new_repo plain
   git config core.hooksPath "$tmp/hooks"
   succeeds git commit -q --allow-empty -m 'No kit here'
 }
 
-test_agent_batch_over_max_lines_blocks() {
+test_over_max_lines_blocks_an_agent_warns_a_human() {
   echo 'More intent.' >> sdd/modules/search.md
   seq 1 201 > src/search/big.py
   git add -A
   fails bash sdd/bin/sdd audit
   says 'SIZE 201 changed lines of code and tests, over 200.'
+  succeeds git commit -qm 'Add a big search'
+  says 'Warnings only'
 }
 
 test_markdown_and_lockfiles_do_not_count() {
@@ -182,7 +178,7 @@ test_large_batch_lifts_both_limits() {
   succeeds bash sdd/bin/sdd audit --message "$msg"
 }
 
-test_audit_prints_the_size_report() {
+test_audit_notes_the_markdown_ratio() {
   succeeds bash sdd/bin/sdd audit
   says 'NOTE 8 lines of markdown for 2 lines of governed code, ratio 4.00 (guideline: at most 1).'
 }
@@ -232,9 +228,11 @@ test_a_link_to_a_missing_test_name_is_drift() {
 
 test_audit_accepts_links_to_names_groups_and_files() {
   mkdir -p tests
-  printf 'class TestTagSearch:\n    def test_typo(self):\n        """corrects a misspelled term"""\n' > tests/test_search.py
+  printf 'class TestTagSearch:\n    def test_typo(self):\n        """corrects a misspelled term"""\n' \
+    > tests/test_search.py
   linked_contract '[corrects a misspelled
-  term](../../tests/test_search.py), [TestTagSearch](/tests/test_search.py#top), [test_search.py](/tests/test_search.py),
+  term](../../tests/test_search.py), [TestTagSearch](/tests/test_search.py#top),
+  [test_search.py](/tests/test_search.py),
   [tests/test_search.py](../../tests/test_search.py), [the docs](https://example.com/docs), [workflow](../WORKFLOW.md),
   [the search code](/src/search/), [the tests](/tests).'
   # Written on Windows: CRLF must not split the wrapped link.
@@ -244,7 +242,7 @@ test_audit_accepts_links_to_names_groups_and_files() {
   lacks 'DRIFT'
 }
 
-test_size_report_leaves_out_the_kit_workflow() {
+test_markdown_ratio_leaves_out_the_kit_workflow() {
   seq 1 50 > sdd/WORKFLOW.md
   git add -A
   succeeds bash sdd/bin/sdd audit
@@ -258,26 +256,22 @@ test_range_checks_each_commit() {
   git commit -q --no-verify -m 'Change search' -m 'Agent-Assisted: yes'
   echo 'Later intent.' >> sdd/modules/search.md
   git add -A
-  git commit -q --no-verify -m 'Touch the contract later'
+  git commit -q --no-verify -m 'Touch the contract later' -m 'Agent-Assisted: yes'
   fails bash sdd/bin/sdd audit --range "$start..HEAD"
   says 'DRIFT sdd/modules/search.md'
   says 'FAIL'
+  # An agent batch with no quiz passes: CI never asks for one.
   says 'OK   '
-}
-
-test_range_passes_human_drift_with_a_warning() {
-  start=$(git rev-parse HEAD)
-  echo two >> src/search/a.py
+  echo three >> src/search/a.py
   git add -A
-  git commit -q --no-verify -m 'Change search'
-  succeeds bash sdd/bin/sdd audit --range "$start..HEAD"
+  git commit -q --no-verify -m 'Change search again'
+  # An unknown base audits the tip only: the human's drift warns.
+  succeeds bash sdd/bin/sdd audit --range "1234567890123456789012345678901234567890..HEAD"
   says 'Warnings only'
 }
 
 test_range_ignores_commits_before_adoption() {
-  mkdir "$tmp/new"
-  cd "$tmp/new"
-  git -c init.defaultBranch=main init -q
+  new_repo new
   echo start > README.md
   git add -A
   git commit -qm 'Start'
@@ -292,17 +286,6 @@ test_range_ignores_commits_before_adoption() {
   git add -A
   git commit -qm 'Adopt'
   succeeds bash sdd/bin/sdd audit --range "$start..HEAD"
-}
-
-test_range_with_an_unknown_base_checks_the_tip_only() {
-  echo two >> src/search/a.py
-  git add -A
-  git commit -q --no-verify -m 'Change search' -m 'Agent-Assisted: yes'
-  echo 'More intent.' >> sdd/modules/import.md
-  echo two >> src/import/a.py
-  git add -A
-  git commit -q --no-verify -m 'Change import'
-  succeeds bash sdd/bin/sdd audit --range "1234567890123456789012345678901234567890..HEAD"
 }
 
 # A ready agent batch on search: code and contract.
@@ -373,35 +356,20 @@ test_a_quiz_older_than_the_batch_only_warns() {
   says 'NOTE The batch changed since the quiz was written'
 }
 
-test_missing_quiz_is_refused() {
+test_an_incomplete_quiz_is_refused() {
   batch
   fails agent_commit 'Change search'
   says 'No quiz for this agent-assisted batch'
-}
-
-test_one_box_per_question() {
-  batch
   write_quiz src/search/a.py 'A B C'
-  answer A B C
-  tick 1 C
-  # Question 1 now has C and A ticked.
-  awk '!done && /- \[ \] one/ { sub(/\[ \]/, "[x]"); done = 1 } { print }' QUIZ.md > QUIZ.tmp
-  mv QUIZ.tmp QUIZ.md
   fails agent_commit 'Change search'
   says 'Tick exactly one box for question 1'
-}
-
-test_question_must_cite_the_batch() {
-  batch
+  sed 's/\[ \]/[x]/' QUIZ.md > QUIZ.tmp && mv QUIZ.tmp QUIZ.md
+  fails agent_commit 'Change search'
+  says 'Tick exactly one box for question 1'
   write_quiz README.md 'A B C'
   answer A B C
   fails agent_commit 'Change search'
   says "Question 1 needs a 'See <file>:<line>' line pointing to a file of this batch."
-}
-
-test_human_commit_needs_no_quiz() {
-  batch
-  succeeds git commit -qm 'Change search'
 }
 
 test_quiz_files_with_crlf() {
@@ -448,7 +416,7 @@ test_rewording_an_agent_commit() {
   batch
   write_quiz src/search/a.py 'A B C'
   answer A B C
-  git commit -q -m 'Change search' -m 'Agent-Assisted: yes'
+  agent_commit 'Change search'
   succeeds git commit -q --amend -m 'Change search, reworded' -m 'Agent-Assisted: yes'
 }
 

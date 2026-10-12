@@ -12,11 +12,12 @@ You were asked to deploy SDD-Fabrik in the current repository. Do this:
 
 1. Check the dependencies: `git`, `bash`, `sed` and `awk`. If any is missing, tell the human which ones and how to
    install them for their system, and stop.
-2. Fetch the latest release into a temporary directory, taking the highest `vX.Y.Z` from the first command:
+2. Fetch the latest release into a temporary directory, taking the highest `vX.Y.Z` from the first command. `<source>`
+   is the URL the human gave, such as an internal mirror, or else `https://github.com/GrIc/sdd-fabrik`:
 
    ```
-   git ls-remote --tags --refs https://github.com/GrIc/sdd-fabrik
-   git clone --depth 1 --branch <tag> https://github.com/GrIc/sdd-fabrik <tmp>
+   git ls-remote --tags --refs <source>
+   git clone --depth 1 --branch <tag> <source> <tmp>
    ```
 3. Copy `<tmp>/template/` into the repository root without overwriting anything. Where a file already exists:
    - `AGENTS.md`: append the block between `<!-- sdd-fabrik -->` and `<!-- /sdd-fabrik -->`;
@@ -24,7 +25,7 @@ You were asked to deploy SDD-Fabrik in the current repository. Do this:
    - `.gitattributes`: append its line, which keeps the script's line ends LF on Windows;
    - a CI workflow: add its step and `fetch-depth: 0` from `.github/workflows/sdd.yml` to it, or keep both;
    - anything else: stop and ask the human.
-4. Replace `<tag>` on the first line of `sdd/README.md` with the tag you deployed.
+4. Replace `<source>` and `<tag>` on the first line of `sdd/README.md` with the URL and the tag you deployed from.
 5. Run `bash sdd/bin/sdd install-hook`. If it declines because another hook is in place, show the human the line it
    printed.
 6. If your tool has a permission deny list, add `git commit`, `git push` and `--no-verify` to it. If it commits on its

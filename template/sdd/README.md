@@ -1,4 +1,4 @@
-Deployed from GrIc/sdd-fabrik <tag>.
+Deployed from <source> <tag>.
 
 # <Project>
 

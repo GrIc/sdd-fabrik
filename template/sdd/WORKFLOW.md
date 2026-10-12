@@ -159,10 +159,10 @@ fails on the default branch, or it drops their trailers.
 
 ## Upgrade (for agents)
 
-1. `git ls-remote --tags --refs https://github.com/GrIc/sdd-fabrik` gives the latest `vX.Y.Z`; the deployed one is on
-   the first line of `sdd/README.md`.
-2. `git clone https://github.com/GrIc/sdd-fabrik <tmp>`; `git -C <tmp> diff <old> <new> -- template/` shows what
-   changed. Then `git -C <tmp> checkout -q <new>`.
+1. The first line of `sdd/README.md` gives the `<source>` and the deployed tag; without a URL there, the source is
+   `https://github.com/GrIc/sdd-fabrik`. `git ls-remote --tags --refs <source>` gives the latest `vX.Y.Z`.
+2. `git clone <source> <tmp>`; `git -C <tmp> diff <old> <new> -- template/` shows what changed. Then
+   `git -C <tmp> checkout -q <new>`.
 3. Replace `sdd/WORKFLOW.md` and `sdd/bin/sdd` with the new tag's (keep the project's changes to `MAX_LINES` and
    `AGENT_EMAILS`), and the block between `<!-- sdd-fabrik -->` and `<!-- /sdd-fabrik -->` in `AGENTS.md`. Apply the
    other template changes the diff shows, such as the CI workflow, with the human. Put the new tag on the first line

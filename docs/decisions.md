@@ -126,3 +126,10 @@ batch when it pays. A criterion is a plain sentence linked to the tests that pro
 file is drift. _Rejected:_ the whole plan in `roadmap.md` (it grows with the history and is read at every session);
 checkboxes (stored status); planned criteria inside contracts (a contract that is not true yet); a When/Then template
 (not how people write specs); a squad of personas (more tokens, no proven gain over one builder and a fresh reviewer).
+
+## 21. The source is recorded at deploy (2026-10-09)
+
+The deploying agent fetches the kit from the URL the human gives, GitHub by default, and writes it with the tag on the
+first line of `sdd/README.md`; upgrade reads it back. A team behind an internal forge mirrors the repo, tags included.
+_Rejected:_ a fork for the internal forge (two sources to keep in step); the GitHub URL hard-coded in deploy and
+upgrade (unreachable or unwanted from some networks).

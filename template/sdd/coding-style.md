@@ -25,7 +25,8 @@ Each line of code, config, test or doc can be defended in one sentence: what it 
 worse without it. Otherwise it goes.
 
 - No restated defaults, and a default is the framework's, not the generator's: check before cutting.
-- Generator output is a draft. A dependency, file or setting arrives with the first code that needs it.
+- Generator output is a draft. A dependency, file or setting arrives with the first code that needs it, or, when that
+  code belongs to another module, in the batch just before it.
 - No validation, error handling or fallback "just in case". Validate at real boundaries; missing required config fails
   at startup.
 - Pareto: a heuristic covers 95 to 98% of real cases. For the rest, rethink the approach instead of piling up

@@ -62,10 +62,12 @@ proposes a refactor batch only when it pays.
 1. Read the intent, the contract, its tests and the code. Ask the open intent questions. When behavior depends on real
    input, measure it with a throwaway script first, and stop at the approach that covers 95 to 98% of real cases.
 2. Build the smallest coherent change, with the tests it deserves ([coding style](coding-style.md#tests)). Run the
-   project's checks.
-3. Update the contract if the intent changed. A batch from a plan moves its criteria into its module's contract, in
-   place of what they restate, and deletes its section; a batch without a module drops them. Otherwise propose
-   `Spec-Unchanged(<module>): <reason>`.
+   project's checks. Never cut a user text, a test or a name to fit the size limit: split the batch, or ask the human
+   for `Large-Batch`.
+3. Update the contract if the intent changed. An intent that goes against `sdd/decisions.md`, even at the human's
+   request, comes with a new decision that supersedes the old one. A batch from a plan moves its criteria into its
+   module's contract, in place of what they restate, and deletes its section; a batch without a module drops them.
+   Otherwise propose `Spec-Unchanged(<module>): <reason>`.
 4. Read the whole diff against the coding style and delete what does not earn its place.
 5. Stage the batch, write the proposed message with `Agent-Assisted: yes` to `.git/sdd/message`, and run
    `bash sdd/bin/sdd audit --message .git/sdd/message`.

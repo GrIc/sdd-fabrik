@@ -2,6 +2,7 @@
 # SDD-Fabrik checks: drift between contracts and code, batch size, and the quiz. See sdd/WORKFLOW.md.
 set -euf  # f: governs paths go to git as pathspecs, the shell must not expand them
 
+# An agent batch up to 5% over only gets a note.
 MAX_LINES=200
 
 # Co-author addresses that mark an agent batch, as an ERE alternation. Names are not enough: Claude is also a
@@ -36,10 +37,10 @@ modules() {
 }
 
 # Checks the change from $1 to $2 (commits or trees) under the commit message $3.
-# Sets changed (the changed files), errors (fatal for everyone) and findings (fatal for agents only).
+# Sets changed (the changed files), errors (fatal for everyone), findings (fatal for agents only) and notes.
 check() {
   local base=$1 tree=$2 msg=$3 module contract paths drift hit touched=0 lines
-  errors= findings=
+  errors= findings= notes=
   changed=$(git diff --name-only --no-renames "$base" "$tree")
   for module in $(sed -n 's/^Spec-Unchanged(\([^)]*\)):.*/\1/p' <<< "$msg"); do
     git cat-file -e "$tree:sdd/modules/$module.md" 2> /dev/null ||
@@ -68,12 +69,22 @@ check() {
       or add 'Spec-Unchanged($module): <reason>' to the message if the behavior is unchanged.
 "
   done
-  grep -q '^Large-Batch:[[:space:]]*[^[:space:]]' <<< "$msg" && return 0
   lines=$(git diff --numstat --no-renames "$base" "$tree" |
     awk -F '\t' '$1 != "-" && $3 !~ /(\.md|\.lock|lock\.json|lock\.yaml)$/ { n += $1 + $2 } END { print n + 0 }')
-  if [ "$lines" -gt "$MAX_LINES" ]; then
-    findings="${findings}SIZE $lines changed lines of code and tests, over $MAX_LINES.
+  if grep -q '^Large-Batch:[[:space:]]*[^[:space:]]' <<< "$msg"; then
+    [ "$lines" -le "$MAX_LINES" ] ||
+      notes="${notes}NOTE $lines changed lines of code and tests, over $MAX_LINES: Large-Batch lifts it.
+"
+    [ "$touched" -le 1 ] || notes="${notes}NOTE the batch changes code of $touched modules: Large-Batch lifts it.
+"
+    return 0
+  fi
+  if [ "$lines" -gt $((MAX_LINES * 105 / 100)) ]; then
+    findings="${findings}SIZE $lines changed lines of code and tests, over $MAX_LINES by more than 5%.
       Split the batch, or the human adds 'Large-Batch: <reason>' to the message.
+"
+  elif [ "$lines" -gt "$MAX_LINES" ]; then
+    notes="${notes}NOTE $lines changed lines of code and tests, over $MAX_LINES but within 5%.
 "
   fi
   if [ "$touched" -gt 1 ]; then
@@ -84,6 +95,7 @@ check() {
 }
 
 report() {
+  printf '%s' "$notes" >&2
   if [ -n "$errors" ]; then
     printf '%s' "$errors$findings" >&2
     return 1
@@ -107,31 +119,53 @@ fail() {
   exit 1
 }
 
-# Checks the boxes ticked in QUIZ.md against the reviewer's key. Needs changed, set by check.
-quiz() {
-  local key answers wrong=0 i boxes ticks pick see expected
-  key=$(quiz_key)
-  [ -f QUIZ.md ] && [ -f "$key" ] ||
-    fail 'No quiz for this agent-assisted batch: ask the fresh reviewer for QUIZ.md (see sdd/WORKFLOW.md).'
-  [ "$(head -n 1 "$key" | tr -d '\r')" = "$(fingerprint)" ] ||
-    echo 'NOTE The batch changed since the quiz was written. If your changes touch what it asks, ask for a new one.' >&2
-  [ "$(grep -c '^## ' QUIZ.md)" -eq 3 ] || fail 'QUIZ.md needs three questions, each under a "## " heading.'
-  answers=$(tr -d '\r' < QUIZ.md | awk '
+# One line per question of QUIZ.md: its number, boxes, ticked boxes, the ticked letter and what its See cites.
+questions() {
+  tr -d '\r' < QUIZ.md | awk '
     /^## / { q++; boxes[q] = 0; ticks[q] = 0; pick[q] = "-"; see[q] = "-"; next }
     q && /^See / { see[q] = substr($0, 5) }
     q && /^- \[[ xX]\]/ { boxes[q]++; if (/^- \[[xX]\]/) { ticks[q]++; pick[q] = substr("ABCD", boxes[q], 1) } }
-    END { for (i = 1; i <= q; i++) print i, boxes[i], ticks[i], pick[i], see[i] }')
+    END { for (i = 1; i <= q; i++) print i, boxes[i], ticks[i], pick[i], see[i] }'
+}
+
+# The reviewer's part: QUIZ.md and its key fit the staged batch. Sets ranks, the right letters in order.
+# Needs changed, set by check.
+quiz_form() {
+  local key i boxes ticks pick see answer letters=ABCD
+  key=$(quiz_key)
+  ranks=
+  [ -f "$key" ] || fail "QUIZ.md has no key: the reviewer writes it at $key (see sdd/WORKFLOW.md)."
+  [ "$(head -n 1 "$key" | tr -d '\r')" = "$(fingerprint)" ] ||
+    echo 'NOTE The batch changed since the quiz was written. If your changes touch what it asks, ask for a new one.' >&2
+  [ "$(grep -c '^## ' QUIZ.md)" -eq 3 ] || fail 'QUIZ.md needs three questions, each under a "## " heading.'
   while read -r i boxes ticks pick see; do
-    grep -qxF "${see%:*}" <<< "$changed" ||
+    grep -qxF "${see%%:*}" <<< "$changed" ||
       fail "Question $i needs a 'See <file>:<line>' line pointing to a file of this batch."
     [ "$boxes" -ge 2 ] && [ "$boxes" -le 4 ] || fail "Question $i needs 2 to 4 boxes."
+    answer=$(sed -n "$((i + 1))p" "$key" | tr -d '\r')
+    answer=${answer%% *}
+    case ${letters:0:$boxes} in *"$answer"*) ;; *) answer= ;; esac
+    [ ${#answer} -eq 1 ] ||
+      fail "Question $i has no right box in the key: line $((i + 1)) starts with its letter, A for the first box."
+    ranks=$ranks$answer
+  done <<< "$(questions)"
+}
+
+# Checks the boxes ticked in QUIZ.md against the reviewer's key. Needs changed, set by check.
+quiz() {
+  local key wrong=0 i boxes ticks pick see expected
+  key=$(quiz_key)
+  [ -f QUIZ.md ] ||
+    fail 'No quiz for this agent-assisted batch: ask the fresh reviewer for QUIZ.md (see sdd/WORKFLOW.md).'
+  quiz_form
+  while read -r i boxes ticks pick see; do
     [ "$ticks" -eq 1 ] || fail "Tick exactly one box for question $i in QUIZ.md, save, then commit again."
     expected=$(sed -n "$((i + 1))p" "$key" | tr -d '\r')
     if [ "$pick" != "${expected%% *}" ]; then
       wrong=$((wrong + 1))
       printf 'Question %s is wrong. %s\n  Reread %s\n' "$i" "${expected#* }" "$see" >&2
     fi
-  done <<< "$answers"
+  done <<< "$(questions)"
   [ "$wrong" -eq 0 ] || fail "$((3 - wrong))/3. Change your answers in QUIZ.md, save, then commit again."
 }
 
@@ -204,7 +238,17 @@ audit_staged() {
   [ -z "${1:-}" ] || msg=$(cat "$1")
   base=$(git rev-parse -q --verify HEAD || echo "$EMPTY_TREE")
   check "$base" "$(git write-tree)" "$msg"
-  if report "$msg"; then echo 'OK: the staged batch passes the checks.'; else status=1; fi
+  report "$msg" || status=1
+  # The reviewer checks its quiz here, so that a malformed one never reaches the human.
+  if [ -f QUIZ.md ]; then
+    (
+      quiz_form
+      case $ranks in
+        AAA | BBB | CCC | DDD) echo "NOTE QUIZ.md: the right answer is box ${ranks%??} every time, vary it." >&2 ;;
+      esac
+    ) || status=1
+  fi
+  [ "$status" -ne 0 ] || echo 'OK: the staged batch passes the checks.'
   guidance
   return $status
 }

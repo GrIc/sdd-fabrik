@@ -55,7 +55,8 @@ An agent batch over 200 changed lines of code and tests, or touching more than o
 adds `Large-Batch: <reason>`. A module spared by `Spec-Unchanged` does not count: a file shared by two modules can
 change for one of them. On the pilot, 10 of 12 code commits stayed under 160 lines; the two above were the hardest to
 review. _Rejected:_ a guideline only; letting the agent judge its own batch (its `Spec-Unchanged` claims stand in the
-message the human reads and commits).
+message the human reads and commits). Up to 5% over only gets a note (2026-10-23): on the second pilot, an agent cut a
+user text, a test case and a name to fit 200 lines; a higher `MAX_LINES` would only move the squeeze.
 
 ## 10. A quiz in a file (2026-10-03)
 

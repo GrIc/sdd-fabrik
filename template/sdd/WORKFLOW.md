@@ -70,7 +70,8 @@ proposes a refactor batch only when it pays.
 5. Stage the batch, write the proposed message with `Agent-Assisted: yes` to `.git/sdd/message`, and run
    `bash sdd/bin/sdd audit --message .git/sdd/message`.
 6. Review: spawn a fresh reviewer, a new context that did not write the batch. It reads the staged diff, the contract
-   and the coding style, reports findings with their evidence, and writes the quiz once the findings are fixed.
+   and the coding style, reports findings with their evidence, and writes the quiz once the findings are fixed. It
+   then runs the audit of step 5 again, which checks the quiz.
 7. Hand off: purpose, the decisions you took alone, evidence, limits and a short "understand this" for the human. The
    human reads the diff, answers `QUIZ.md` and commits with `git commit -F .git/sdd/message`.
 
@@ -83,7 +84,7 @@ says so.
 
 - `QUIZ.md` at the repo root (kept out of git): three questions that make the human predict, not recognize. What does
   this return for that input, which line enforces this rule, what breaks if this line goes, why this option over that
-  one. Each question cites a changed `file:line` and has 2 to 4 boxes.
+  one. Each question cites a changed `file:line` and has 2 to 4 boxes; the right box changes place.
 
   ```markdown
   # Quiz for this batch
@@ -149,9 +150,9 @@ keeps its text.
 
 A co-author address listed in `AGENT_EMAILS` (top of `sdd/bin/sdd`) counts as `Agent-Assisted: yes`; any other commit
 is the human's own. The script prints ERROR when every commit must stop; DRIFT (code against its contract, or a
-contract link to a missing test or file) and SIZE, which refuse an agent batch and only warn on the human's own; and
-NOTE, guidance that never refuses. CI replays drift and size on every pushed commit, never the quiz. Everything here
-can be bypassed: it is there to help, not to lock.
+contract link to a missing test or file) and SIZE (more than 5% over `MAX_LINES`, or a second module), which refuse an
+agent batch and only warn on the human's own; and NOTE, guidance that never refuses. CI replays drift and size on every
+pushed commit, never the quiz. Everything here can be bypassed: it is there to help, not to lock.
 
 The hook compares the batch with HEAD: to amend an agent batch that changes files, run `git reset --soft HEAD^` and
 commit again. Merge pull requests with a merge commit or a rebase: a squash adds the batches up, so the size check

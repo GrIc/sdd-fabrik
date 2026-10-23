@@ -141,12 +141,20 @@ test_the_line_for_a_shared_hook() {
 
 test_over_max_lines_blocks_an_agent_warns_a_human() {
   echo 'More intent.' >> sdd/modules/search.md
-  seq 1 201 > src/search/big.py
+  seq 1 211 > src/search/big.py
   git add -A
   fails bash sdd/bin/sdd audit
-  says 'SIZE 201 changed lines of code and tests, over 200.'
+  says 'SIZE 211 changed lines of code and tests, over 200 by more than 5%.'
   succeeds git commit -qm 'Add a big search'
   says 'Warnings only'
+}
+
+test_up_to_five_percent_over_only_notes() {
+  echo 'More intent.' >> sdd/modules/search.md
+  seq 1 210 > src/search/big.py
+  git add -A
+  succeeds bash sdd/bin/sdd audit
+  says 'NOTE 210 changed lines of code and tests, over 200 but within 5%.'
 }
 
 test_markdown_and_lockfiles_do_not_count() {
@@ -171,11 +179,13 @@ test_two_modules_block_an_agent() {
 test_large_batch_lifts_both_limits() {
   echo 'More intent.' >> sdd/modules/search.md
   echo 'More intent.' >> sdd/modules/import.md
-  seq 1 201 > src/search/big.py
+  seq 1 211 > src/search/big.py
   echo two >> src/import/a.py
   git add -A
   printf 'Big\n\nAgent-Assisted: yes\nLarge-Batch: one rename across both modules\n' > "$msg"
   succeeds bash sdd/bin/sdd audit --message "$msg"
+  says 'NOTE 212 changed lines of code and tests, over 200: Large-Batch lifts it.'
+  says 'NOTE the batch changes code of 2 modules: Large-Batch lifts it.'
 }
 
 test_audit_notes_the_markdown_ratio() {
@@ -370,6 +380,31 @@ test_an_incomplete_quiz_is_refused() {
   answer A B C
   fails agent_commit 'Change search'
   says "Question 1 needs a 'See <file>:<line>' line pointing to a file of this batch."
+}
+
+# The reviewer runs the audit once the quiz is written: what the hook would refuse shows up before the human sees it.
+test_audit_checks_the_quiz_before_the_human() {
+  batch
+  write_quiz README.md 'A B C'
+  fails bash sdd/bin/sdd audit
+  says "Question 1 needs a 'See <file>:<line>' line pointing to a file of this batch."
+  write_quiz src/search/a.py 'A B D'
+  fails bash sdd/bin/sdd audit
+  says 'Question 3 has no right box in the key'
+  write_quiz src/search/a.py 'B B B'
+  succeeds bash sdd/bin/sdd audit
+  says 'NOTE QUIZ.md: the right answer is box B every time, vary it.'
+  rm "$(git rev-parse --git-path sdd/quiz-key)"
+  fails bash sdd/bin/sdd audit
+  says 'QUIZ.md has no key'
+}
+
+test_a_see_line_may_cite_more_places() {
+  batch
+  write_quiz src/search/a.py 'A B C'
+  answer A B C
+  sed 's/^See .*/See src\/search\/a.py:1-2 and sdd\/modules\/search.md:5/' QUIZ.md > QUIZ.tmp && mv QUIZ.tmp QUIZ.md
+  succeeds agent_commit 'Change search'
 }
 
 test_quiz_files_with_crlf() {

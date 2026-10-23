@@ -17,12 +17,15 @@ check can be bypassed.
   [test_spec_unchanged_spares_its_module_only](/test/run),
   [test_a_spared_module_does_not_count_toward_the_module_limit](/test/run),
   [test_errors_stop_even_a_human_commit](/test/run), [test_governs_takes_git_pathspecs](/test/run).
-- Size: at most `MAX_LINES` changed lines of code and tests, and one module, unless `Large-Batch: <reason>`:
-  [test_over_max_lines_blocks_an_agent_warns_a_human](/test/run), [test_two_modules_block_an_agent](/test/run),
-  [test_large_batch_lifts_both_limits](/test/run).
+- Size: at most `MAX_LINES` changed lines of code and tests, and one module, unless `Large-Batch: <reason>`, which
+  still notes what it lifts. Up to 5% over only gets a note:
+  [test_over_max_lines_blocks_an_agent_warns_a_human](/test/run), [test_up_to_five_percent_over_only_notes](/test/run),
+  [test_two_modules_block_an_agent](/test/run), [test_large_batch_lifts_both_limits](/test/run).
 - Quiz: three questions on the staged batch in `QUIZ.md`, graded offline against a key:
   [test_quiz_passed_adds_the_trailer_and_cleans_up](/test/run),
-  [test_wrong_answer_explains_then_a_retry_passes](/test/run).
+  [test_wrong_answer_explains_then_a_retry_passes](/test/run). `audit` checks its form, so that the reviewer, not the
+  human, meets a malformed quiz: [test_audit_checks_the_quiz_before_the_human](/test/run),
+  [test_a_see_line_may_cite_more_places](/test/run).
 - CI replays drift and size on each new commit, never the quiz: [test_range_checks_each_commit](/test/run).
 - A link in a contract is drift when the commit lacks the file it points to, or when its text is neither found, as
   whole words, in that file, nor its name or path: [test_a_link_to_a_missing_file_is_drift](/test/run),
@@ -32,7 +35,8 @@ check can be bypassed.
   links and links to markdown or to a directory are not checked:
   [test_audit_accepts_links_to_names_groups_and_files](/test/run).
 - Guidance starts with `NOTE` and never fails `audit` or a commit: the markdown ratio, governs paths that match nothing,
-  a quiz older than its batch: [test_audit_notes_the_markdown_ratio](/test/run),
+  a quiz older than its batch, a right answer always in the same place:
+  [test_audit_notes_the_markdown_ratio](/test/run),
   [test_audit_points_out_governs_paths_that_match_nothing](/test/run),
   [test_a_quiz_older_than_the_batch_only_warns](/test/run).
 

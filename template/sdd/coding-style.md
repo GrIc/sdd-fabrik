@@ -13,8 +13,10 @@ Formatters and linters enforce what they can.
 |---|---|
 | Formatter, linter | to settle |
 | Indentation, line width | per language: to settle; markdown prose wraps at 120, never tables, code blocks or URLs |
-| Naming, file layout | to settle; names say what they hold or do |
-| Comments | rare, they say why: no comment restating the code, no banner, no commented-out code |
+| Readability | first, concision second: as few lines as a clear reading allows, never fewer; no trick a newcomer to the language would trip on (bool arithmetic, slice assignment), name a helper instead |
+| Naming | to settle; a name says what it holds or does, and to what (`describe_error`, not `describe`); a mapping says what it maps (`seats_per_room`); a name is never cut to fit a line: split the line instead |
+| File layout | to settle; a file reads top to bottom: its data structures, the entry point, then the helpers in the order it calls them |
+| Comments | in a language with docstrings, each function and class whose name does not say it all has one: what it does, then what it needs; a line that is not plain gets a short comment, saying why when the what is clear; no comment restating the code, no banner, no commented-out code |
 | Errors | to settle |
 | Diagrams | Mermaid, one per topic |
 | Commit messages | what the batch does and, when it is not obvious, why |

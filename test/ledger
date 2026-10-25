@@ -41,8 +41,8 @@ test_record_splits_a_batch_by_module_on_no_commit() {
   batch 3 1 2026-10-23T11:00:00Z
   fails "$(ledger | tr '\t' ' ')" 'v1 2026-10 import writer opus 1 10 100 1000 2
 v1 2026-10 search writer opus 3 30 300 3000 6'
-  fails "$(git log -1 --format='%an %aI %cI' refs/notes/sdd-ledger)" \
-    'sdd-fabrik 2026-10-01T00:00:00+00:00 2026-10-01T00:00:00+00:00'
+  # Epoch seconds: git 2.55 writes UTC as Z, older versions as +00:00.
+  fails "$(git log -1 --format='%an %at %ct' refs/notes/sdd-ledger)" 'sdd-fabrik 1790812800 1790812800'
   ! git notes --ref sdd-ledger list HEAD 2> /dev/null
 }
 

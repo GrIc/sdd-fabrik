@@ -154,4 +154,6 @@ reviewer gets a smaller model than the writer's unless the batch is large or tou
 the same reviewer checks its quiz again (1 to 4k tokens in this kit; a fresh one costs about 50k, most of it its fixed
 start); each batch starts in a fresh session; tests and builds print little when green. The core stays git and bash:
 picking a model or resuming a sub-agent is a tool's feature, used where it exists and skipped where it does not.
-_Rejected:_ a review pack that hands the reviewer its reading (the fixed start dominates, it would save little).
+_Rejected:_ a review pack that hands the reviewer its reading (the fixed start dominates, it would save little); a
+terse "caveman" style for the agents (it cuts output, about 8% of the cost against about 50% for cache reads, and
+blurs the quiz and the handoff, the text a human must understand).

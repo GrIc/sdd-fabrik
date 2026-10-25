@@ -28,6 +28,8 @@ check can be bypassed.
   [test_a_see_line_may_cite_more_places](/test/run).
 - `touched` lists the modules a commit changes, in code or contract, each with its changed lines, so that the token
   ledger can split a batch's cost: [test_touched_lists_each_module_with_its_lines](/test/run).
+- `quiet <command>` prints one line when the command passes and its last 30 lines when it fails, with its status:
+  [test_quiet_hides_a_green_output_and_shows_the_end_of_a_red_one](/test/run).
 - CI replays drift and size on each new commit, never the quiz: [test_range_checks_each_commit](/test/run).
 - A link in a contract is drift when the commit lacks the file it points to, or when its text is neither found, as
   whole words, in that file, nor its name or path: [test_a_link_to_a_missing_file_is_drift](/test/run),

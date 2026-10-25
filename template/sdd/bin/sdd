@@ -290,6 +290,21 @@ audit_range() {
   return $status
 }
 
+# Runs a command and keeps its output short for the agent: one line when it passes, its last 30 lines when it fails.
+quiet() {
+  local log status=0
+  log=$(mktemp)
+  "$@" > "$log" 2>&1 || status=$?
+  if [ "$status" -eq 0 ]; then
+    echo "ok: $* ($(wc -l < "$log" | tr -d ' ') lines hidden)"
+  else
+    tail -n 30 "$log"
+    echo "FAIL ($status): $*"
+  fi
+  rm -f "$log"
+  return "$status"
+}
+
 install_hook() {
   local hook exclude
   exclude=$(git rev-parse --git-path info/exclude)
@@ -322,8 +337,9 @@ case ${1:-} in
     echo "key: $(quiz_key)" ;;
   install-hook) install_hook ;;
   touched) touched "${2:-HEAD}" ;;
+  quiet) shift && quiet "$@" ;;
   *)
     echo 'usage: bash sdd/bin/sdd hook <message-file> | audit [--message <file> | --range <base>..<tip>]' >&2
-    echo '       bash sdd/bin/sdd fingerprint | install-hook | touched [<commit>]' >&2
+    echo '       bash sdd/bin/sdd fingerprint | install-hook | touched [<commit>] | quiet <command>...' >&2
     exit 2 ;;
 esac

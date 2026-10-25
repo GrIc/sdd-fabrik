@@ -18,7 +18,7 @@ Formatters and linters enforce what they can.
 | File layout | to settle; a file reads top to bottom: its data structures, the entry point, then the helpers in the order it calls them |
 | Comments | in a language with docstrings, each function and class whose name does not say it all has one: what it does, then what it needs; a line that is not plain gets a short comment, saying why when the what is clear; no comment restating the code, no banner, no commented-out code |
 | Errors | to settle |
-| Command output | tests and builds print little when green and a short trace when red, since an agent reads every line: `pytest -q --tb=short`, `rspec --format progress`, `cargo test -q`, `vitest run --reporter=dot` |
+| Command output | tests and builds print little when green and a short trace when red, since an agent reads every line: `pytest -q --tb=short`, `rspec --format progress`, `cargo test -q`, `vitest run --reporter=dot`; without such a flag, `bash sdd/bin/sdd quiet <command>` |
 | Diagrams | Mermaid, one per topic |
 | Commit messages | what the batch does and, when it is not obvious, why |
 

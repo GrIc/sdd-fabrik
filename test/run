@@ -198,6 +198,13 @@ test_touched_lists_each_module_with_its_lines() {
   [ "$(bash sdd/bin/sdd touched)" = "$(printf 'import\t1\nsearch\t3')" ]
 }
 
+test_quiet_hides_a_green_output_and_shows_the_end_of_a_red_one() {
+  succeeds bash sdd/bin/sdd quiet seq 100
+  [ "$(cat "$out")" = 'ok: seq 100 (100 lines hidden)' ]
+  fails bash sdd/bin/sdd quiet sh -c 'seq 100; exit 3'
+  [ "$(head -n 1 "$out")" = 71 ] && [ "$(tail -n 1 "$out")" = "FAIL (3): sh -c seq 100; exit 3" ]
+}
+
 test_audit_notes_the_markdown_ratio() {
   succeeds bash sdd/bin/sdd audit
   says 'NOTE 8 lines of markdown for 2 lines of governed code, ratio 4.00 (guideline: at most 1).'
@@ -492,7 +499,8 @@ names=${*:-$(declare -F | awk '$3 ~ /^test_/ { print $3 }')}
 failed=0
 for t in $names; do
   ( set -e; setup; "$t" )
-  if [ $? -eq 0 ]; then echo "ok   $t"; else echo "FAIL $t"; failed=$((failed + 1)); fi
+  # Quiet when green: the agent that runs the tests reads every line.
+  if [ $? -ne 0 ]; then echo "FAIL $t"; failed=$((failed + 1)); fi
 done
-echo "$failed failed"
+echo "$failed failed of $(wc -w <<< "$names" | tr -d ' ')"
 [ "$failed" -eq 0 ]

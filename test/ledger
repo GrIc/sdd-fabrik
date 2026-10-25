@@ -123,7 +123,8 @@ names=${*:-$(declare -F | awk '$3 ~ /^test_/ { print $3 }')}
 failed=0
 for t in $names; do
   ( set -e; setup; "$t" )
-  if [ $? -eq 0 ]; then echo "ok   $t"; else echo "FAIL $t"; failed=$((failed + 1)); fi
+  # Quiet when green: the agent that runs the tests reads every line.
+  if [ $? -ne 0 ]; then echo "FAIL $t"; failed=$((failed + 1)); fi
 done
-echo "$failed failed"
+echo "$failed failed of $(wc -w <<< "$names" | tr -d ' ')"
 [ "$failed" -eq 0 ]

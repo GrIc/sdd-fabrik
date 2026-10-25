@@ -2,7 +2,8 @@
 """The cockpit's Python part, run by sdd/bin/cockpit: the report, and opencode's usage, whose logs are a SQLite base.
 
 `opencode <repo> <since> <until>` prints the tokens opencode spent in <repo> between two epoch seconds, as
-`sdd/bin/cockpit usage` does. `hints <repo> <state>` prints what the last 7 days show to cut, each at most once a week.
+`sdd/bin/cockpit usage` does. Without a window, `report` and `hints <repo> <state>` read the commit times of the dev's
+agent batches on their input, and look at the last 10.
 """
 import glob
 import json
@@ -23,18 +24,20 @@ REVIEW = re.compile(r"review|quiz", re.I)
 READ, WRITE, WRITE_HOUR, OUTPUT = 0.1, 1.25, 2, 5
 # Text runs about 3.5 characters a token; an image about 1600 tokens.
 CHARS_PER_TOKEN, IMAGE = 3.5, 1600
-WEEK = 7 * 86400
-# A hint names what costs at least this share of the week, or a context this long.
+# The dev's last batches, whatever their pace: enough that "never called" means something, and a hint comes back
+# after as many.
+BATCHES = 10
+# A hint names what costs at least this share, below which a cut does not show on the bill, or a context this long.
 SHARE, LONG = 0.05, 150_000
 
 
 def main():
     if sys.argv[1:2] == ["report"] and len(sys.argv) in (3, 5):
         end = int(sys.argv[4]) if len(sys.argv) == 5 else int(time.time())
-        start = int(sys.argv[3]) if len(sys.argv) == 5 else end - WEEK
+        start = int(sys.argv[3]) if len(sys.argv) == 5 else window(batches())[0]
         report(sys.argv[2], start, end)
     elif sys.argv[1:2] == ["hints"] and len(sys.argv) == 4:
-        hints(sys.argv[2], sys.argv[3])
+        hints(sys.argv[2], sys.argv[3], batches())
     elif sys.argv[1:2] == ["opencode"] and len(sys.argv) == 5:
         usage(sys.argv[2], int(sys.argv[3]), int(sys.argv[4]))
     else:
@@ -92,11 +95,23 @@ def report(repo, start, end):
         print(f"{source[:40]:41}{short(cost):>9}{cost / total:>7.0%}")
 
 
-def hints(repo, state):
-    """What this week's logs show to cut, for the agent to put to the dev as a question. Silent when nothing is new: a
-    hint shown comes back a week later at the earliest."""
-    end = int(time.time())
-    seen = measure(repo, end - WEEK, end)
+def batches():
+    """The commit times of the dev's agent batches, newest first, as sdd/bin/cockpit gives them."""
+    return [int(when) for when in sys.stdin.read().split()]
+
+
+def window(times):
+    """Where the last BATCHES batches start, the start of the logs when there are fewer, and how many they are."""
+    return (times[BATCHES] if len(times) > BATCHES else 0), max(min(len(times), BATCHES), 1)
+
+
+def hints(repo, state, times):
+    """What the last batches show to cut, for the agent to put to the dev as a question. Silent before the first batch
+    and when nothing is new: a hint shown comes back BATCHES batches later at the earliest."""
+    if not times:
+        return
+    start, count = window(times)
+    seen = measure(repo, start, int(time.time()))
     if not seen.total:
         return
     found = {}
@@ -106,33 +121,33 @@ def hints(repo, state):
         tool.startswith(f"mcp__{re.sub(r'[^A-Za-z0-9_-]', '_', server)}__") for tool in seen.called)]
     if unused:
         cost = sum(seen.sources["MCP instructions " + server] for server in unused)
-        found["mcp"] = (f"MCP servers never called in this repo's logs, whose instructions cost {short(cost)} tokens"
-                        f" this week: {', '.join(sorted(unused))}.")
+        found["mcp"] = (f"MCP servers never called in this repo's logs, whose instructions cost {short(cost / count)}"
+                        f" tokens a batch: {', '.join(sorted(unused))}.")
     listing = seen.sources["skill listing"]
     idle = {plugin: size for plugin, size in seen.listing.items() if seen.called["skill " + plugin] == 0}
     if listing >= SHARE * seen.total and idle:
-        found["skills"] = (f"The skill listing cost {short(listing)} tokens ({listing / seen.total:.0%}) this week;"
-                           f" plugins whose skills were never called here make"
+        found["skills"] = (f"The skill listing costs {short(listing / count)} tokens a batch"
+                           f" ({listing / seen.total:.0%}); plugins whose skills were never called here make"
                            f" {sum(idle.values()) / sum(seen.listing.values()):.0%} of it, the largest:"
                            f" {', '.join(sorted(idle, key=idle.get, reverse=True)[:5])}.")
     for source, cost in seen.sources.items():
         if cost >= SHARE * seen.total and source != "skill listing" and not source.startswith("MCP"):
-            found[source] = (f"{source[0].upper()}{source[1:]} cost {short(cost)} tokens ({cost / seen.total:.0%})"
-                             f" this week, sent again with every later call.")
+            found[source] = (f"{source[0].upper()}{source[1:]} cost {short(cost / count)} tokens a batch"
+                             f" ({cost / seen.total:.0%}), sent again with every later call.")
     if seen.longest[0] > LONG:
         found["context"] = (f"A log reached {short(seen.longest[0])} tokens of context, read again with each call: a"
                             f" fresh session per batch reads less.")
     shown = {}
     if os.path.exists(state):
         with open(state) as file:
-            shown = {key: int(when) for key, when in (line.rstrip("\n").split("\t") for line in file)}
+            shown = {key: int(batch) for key, batch in (line.rstrip("\n").split("\t") for line in file)}
     for key, text in found.items():
-        if end - shown.get(key, 0) >= WEEK:
+        if len(times) - shown.get(key, -BATCHES) >= BATCHES:
             print("HINT " + text)
-            shown[key] = end
+            shown[key] = len(times)
     os.makedirs(os.path.dirname(state) or ".", exist_ok=True)
     with open(state, "w") as file:
-        file.writelines(f"{key}\t{when}\n" for key, when in shown.items())
+        file.writelines(f"{key}\t{batch}\n" for key, batch in shown.items())
 
 
 def trace(path, start, end, seen):

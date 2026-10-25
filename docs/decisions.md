@@ -198,7 +198,8 @@ as an `AGENTS.md` line is); a `sdd help` command (a call to learn what a line ca
 At each handoff, the agent runs `bash sdd/bin/cockpit hints` and asks the dev about each line, with the change it
 would make. A hint names a cost the logs show and what it buys: on this kit's logs of a week, seven MCP servers whose
 instructions cost 95k tokens and whose tools were never called, a skill listing at 5% of the cost, 95% of it from
-plugins never called here, Bash results at 10%, a context of 238k. A hint shown waits a week before it comes back, so
-that most handoffs read an empty line. _Rejected:_ the agent changing the setup on its own (MCP servers and plugins
-are the dev's, often for other repos); a hint at every batch (the dev stops reading them); hints judged on quality
-(the logs show what is used, not what it is worth).
+plugins never called here, Bash results at 10%, a context of 238k. Hints look at the dev's last 10 agent batches, and
+one shown waits 10 batches before it comes back, so that most handoffs read an empty line. _Rejected:_ the agent
+changing the setup on its own (MCP servers and plugins are the dev's, often for other repos); a hint at every batch
+(the dev stops reading them); a window in days (a week is 30 batches for one dev and 2 for another); hints judged on
+quality (the logs show what is used, not what it is worth).

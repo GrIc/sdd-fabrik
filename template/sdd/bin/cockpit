@@ -82,15 +82,29 @@ usage() {
     }'
 }
 
+# The commit times of this dev's agent batches in repo $1, newest first, marked as the hook marks them: the cockpit
+# counts in batches, whatever the dev's pace.
+batches() {
+  local emails author
+  emails=$(sed -n "s/^AGENT_EMAILS='\(.*\)'$/\1/p" "$(dirname "$0")/sdd")
+  # The address git would commit with; without one, the dev has no batch.
+  author=$(git -C "$1" var GIT_AUTHOR_IDENT 2> /dev/null | sed -n 's/.*<\(.*\)>.*/\1/p')
+  [ -n "$author" ] || return 0
+  git -C "$1" log --no-merges --author="<$author>" -i -E \
+    --grep='^Agent-Assisted:[[:space:]]*yes[[:space:]]*$' --grep="^Co-Authored-By:.*<($emails)>" --format=%ct
+}
+
 if [ "${1:-}" = usage ] && [ $# -eq 4 ]; then
   usage "$2" "$3" "$4"
+elif [ "${1:-}" = report ] && [ $# -eq 2 ]; then
+  batches "$2" | exec python3 "$(dirname "$0")/cockpit.py" report "$2"
 elif [ "${1:-}" = report ]; then
   shift
   exec python3 "$(dirname "$0")/cockpit.py" report "$@"
 elif [ "${1:-}" = hints ] && [ $# -eq 1 ]; then
   # Hints are advice: without Python, the batch goes on without them.
   python3 -c '' > /dev/null 2>&1 || exit 0
-  exec python3 "$(dirname "$0")/cockpit.py" hints "$(git rev-parse --show-toplevel)" \
+  batches . | exec python3 "$(dirname "$0")/cockpit.py" hints "$(git rev-parse --show-toplevel)" \
     "$(git rev-parse --git-path sdd/hints)"
 else
   echo 'usage: bash sdd/bin/cockpit report <repo> [<since> <until>] | hints | usage <repo> <since> <until>' >&2

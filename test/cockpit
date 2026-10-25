@@ -98,13 +98,24 @@ test_report_weighs_roles_and_what_is_sent_along() {
   done
 }
 
-test_hints_say_what_to_cut_once_a_week() {
+# An agent batch of the dev's at time $1, or now.
+batch() { GIT_COMMITTER_DATE=${1:-} git commit -q --allow-empty -m Batch -m 'Agent-Assisted: yes'; }
+
+test_hints_say_what_to_cut_once_in_ten_batches() {
   git init -q "$repo" && cd "$repo"
+  git config user.email dev@example.test && git config user.name Dev
   # As Claude Code names the folder: from the real path, which macOS reaches through /private.
   claude=$CLAUDE_CONFIG_DIR/projects/$(git rev-parse --show-toplevel | sed 's/[^A-Za-z0-9]/-/g')
   mkdir -p "$claude"
-  now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   block=$(printf '%02000d' 0)
+  # Two days ago, before the last ten batches of yesterday, a server that no hint names.
+  {
+    echo '{"attachment":{"type":"mcp_instructions_delta","addedNames":["old"],"addedBlocks":["'"$block"'"]}}'
+    old=$(python3 -c 'import time; print(time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() - 172800)))')
+    reply m0 "$old" claude-opus-5-5 0 10 0 100
+  } > "$claude/s0.jsonl"
+  for i in 1 2 3 4 5 6 7 8 9 10 11; do batch "@$(($(date +%s) - 86400 + i)) +0000"; done
+  now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   {
     echo '{"attachment":{"type":"mcp_instructions_delta","addedNames":["docs","claude.ai Mail"],'\
 '"addedBlocks":["'"$block"'","'"$block"'"]}}'
@@ -114,11 +125,17 @@ test_hints_say_what_to_cut_once_a_week() {
     reply m1 "$now" claude-opus-5-5 0 10 0 100 | sed "s/\"content\":\[\]/\"content\":[$calls]/"
     reply m2 "$now" claude-opus-5-5 0 10 100 0
   } > "$claude/s1.jsonl"
-  bash "$kit/template/sdd/bin/cockpit" hints > "$tmp/out"
-  grep -q "^HINT MCP servers never called in this repo's logs, .*: docs\.$" "$tmp/out"
-  grep -q '^HINT The skill listing .*, the largest: big\.$' "$tmp/out"
+  hints() { bash "$kit/template/sdd/bin/cockpit" hints; }
+  hints > "$tmp/out"
+  grep -q "^HINT MCP servers never called in this repo's logs, .* tokens a batch: docs\.$" "$tmp/out"
+  grep -q '^HINT The skill listing costs .* tokens a batch .*, the largest: big\.$' "$tmp/out"
   fails "$(wc -l < "$tmp/out" | tr -d ' ')" 2
-  fails "$(bash "$kit/template/sdd/bin/cockpit" hints)" ''
+  for i in 1 2 3 4 5 6 7 8 9; do batch; done
+  # A teammate's batch is not this dev's.
+  git -c user.email=mate@example.test commit -q --allow-empty -m Batch -m 'Agent-Assisted: yes'
+  fails "$(hints)" ''
+  batch
+  fails "$(hints | wc -l | tr -d ' ')" 2
 }
 
 names=${*:-$(declare -F | awk '$3 ~ /^test_/ { print $3 }')}

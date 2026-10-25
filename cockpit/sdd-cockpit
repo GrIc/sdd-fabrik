@@ -4,6 +4,9 @@ ledger asks for.
 
 Install: copy this file to a folder on your PATH, such as ~/.local/bin, and make it executable. Needs Python 3.
 
+`sdd-cockpit report <repo> [<since> <until>]` shows where the tokens spent in <repo> went, over the last 7 days by
+default: by role and model, the context each log starts with and reaches, and what is sent along with the calls.
+
 `sdd-cockpit usage <repo> <since> <until>` prints, for the token ledger (sdd/bin/ledger), the tokens spent in <repo>
 between two epoch seconds: one tab-separated line per role and model family, with calls, input, output (reasoning
 included), cache read and cache write tokens.
@@ -13,18 +16,33 @@ import json
 import os
 import re
 import sqlite3
+import statistics
 import sys
-from collections import defaultdict
+import time
+from collections import Counter, defaultdict
 from datetime import datetime
 
 FIELDS = ["input", "output", "cache_read", "cache_write"]
 REVIEW = re.compile(r"review|quiz", re.I)
+# Anthropic's price ratios, in input tokens: a cache read costs a tenth, a cache write 1.25 (2 when kept an hour),
+# an output token 5.
+READ, WRITE, WRITE_HOUR, OUTPUT = 0.1, 1.25, 2, 5
+# Text runs about 3.5 characters a token; an image about 1600 tokens.
+CHARS_PER_TOKEN, IMAGE = 3.5, 1600
 
 
 def main():
-    if len(sys.argv) != 5 or sys.argv[1] != "usage":
-        sys.exit("usage: sdd-cockpit usage <repo> <since> <until>")
-    repo, start, end = sys.argv[2], int(sys.argv[3]), int(sys.argv[4])
+    if sys.argv[1:2] == ["report"] and len(sys.argv) in (3, 5):
+        end = int(sys.argv[4]) if len(sys.argv) == 5 else int(time.time())
+        start = int(sys.argv[3]) if len(sys.argv) == 5 else end - 7 * 86400
+        report(sys.argv[2], start, end)
+    elif sys.argv[1:2] == ["usage"] and len(sys.argv) == 5:
+        usage(sys.argv[2], int(sys.argv[3]), int(sys.argv[4]))
+    else:
+        sys.exit("usage: sdd-cockpit report <repo> [<since> <until>] | usage <repo> <since> <until>")
+
+
+def usage(repo, start, end):
     rows = defaultdict(lambda: dict.fromkeys(["calls"] + FIELDS, 0))
     for (role, model), tokens in claude_code(repo, start, end) + opencode(repo, start, end):
         row = rows[role, family(model)]
@@ -35,23 +53,126 @@ def main():
         print("\t".join(list(key) + [str(rows[key][field]) for field in ["calls"] + FIELDS]))
 
 
-def claude_code(repo, start, end):
+def report(repo, start, end):
+    """Where the tokens went, for the dev to cut: exact sums from the logs, then estimates from the size of what was
+    sent."""
+    roles, starts, sources = defaultdict(lambda: [0, 0]), defaultdict(list), Counter()
+    total = reads = 0
+    longest = (0, 0)
+    for path, role in claude_logs(repo):
+        calls = 0
+        for context, cost, read, model, opening in trace(path, start, end, sources):
+            roles[role, family(model)][0] += 1
+            roles[role, family(model)][1] += cost
+            total, reads, calls = total + cost, reads + read, calls + 1
+            longest = max(longest, (context, calls))
+            if opening:
+                starts["session" if role == "writer" else "sub-agent"].append(context)
+    if not total:
+        sys.exit(f"No Claude Code log of {repo} in that window.")
+    print(f"Claude Code in {repo}: {short(total)} input-equivalent tokens (cache read x{READ}, cache write x{WRITE}"
+          f" or x{WRITE_HOUR}, output x{OUTPUT}).\n")
+    print(f"{'role':24}{'model':10}{'calls':>7}{'tokens':>9}{'share':>7}")
+    for (role, model), (calls, cost) in sorted(roles.items(), key=lambda item: -item[1][1]):
+        print(f"{role:24}{model:10}{calls:>7}{short(cost):>9}{cost / total:>7.0%}")
+    print()
+    for kind, contexts in starts.items():
+        median = short(statistics.median(contexts))
+        print(f"A {kind} starts with {median} tokens of context (median of {len(contexts)}).")
+    print(f"The longest reached {short(longest[0])} after {longest[1]} calls; cache reads are {reads / total:.0%} of"
+          f" the cost.\n")
+    print("Estimated from their size, what is sent along with the calls:")
+    for source, cost in sources.most_common(8):
+        print(f"{source[:40]:41}{short(cost):>9}{cost / total:>7.0%}")
+
+
+def trace(path, start, end, sources):
+    """Each reply of a log in the window, as its context, cost, cache read cost, model, and whether it opens the log.
+    Adds to sources what each piece sent along costs: written once, then read again with every later call until a
+    compaction drops it."""
+    live, pending, names, seen = Counter(), Counter(), {}, set()
+    for entry in entries(path):
+        if entry.get("subtype") == "compact_boundary":
+            live.clear()
+        message = entry.get("message") or {}
+        if reply(message, seen):
+            use = message["usage"]
+            write = WRITE_HOUR if (use.get("cache_creation") or {}).get("ephemeral_1h_input_tokens") else WRITE
+            if start < epoch(entry["timestamp"]) <= end:
+                read = READ * use.get("cache_read_input_tokens", 0)
+                for source, size in live.items():
+                    sources[source] += READ * size
+                for source, size in pending.items():
+                    sources[source] += write * size
+                context = sum(use.get(f, 0) for f in ["input_tokens", "cache_creation_input_tokens",
+                                                       "cache_read_input_tokens"])
+                cost = use.get("input_tokens", 0) + write * use.get("cache_creation_input_tokens", 0) + read
+                yield context, cost + OUTPUT * use.get("output_tokens", 0), read, message["model"], len(seen) == 1
+            live.update(pending)
+            pending.clear()
+        for source, size in pieces(entry, names):
+            pending[source] += size
+
+
+def pieces(entry, names):
+    """What an entry sends along with the next calls, other than the conversation, as (source, estimated tokens)."""
+    attachment = entry.get("attachment") or {}
+    kind = attachment.get("type")
+    if kind == "skill_listing":
+        yield "skill listing", tokens(attachment.get("content", ""))
+    elif kind == "hook_additional_context":
+        yield f"hook {attachment.get('hookEvent')}", tokens(str(attachment.get("content", "")))
+    elif kind == "mcp_instructions_delta":
+        for name, block in zip(attachment.get("addedNames", []), attachment.get("addedBlocks", [])):
+            yield f"MCP instructions {name}", tokens(block)
+    elif kind in ("instructions", "nested_memory"):
+        yield "memory files (CLAUDE.md, AGENTS.md)", tokens(json.dumps(attachment))
+    content = (entry.get("message") or {}).get("content")
+    for block in content if isinstance(content, list) else []:
+        if block.get("type") == "tool_use":
+            names[block["id"]] = block["name"]
+        elif block.get("type") == "tool_result":
+            # One line per MCP server, not per tool.
+            name = re.sub(r"^(mcp__[^_]+(?:_[^_]+)*?)__.*", r"\1", names.get(block.get("tool_use_id"), "?"))
+            yield f"tool results {name}", tokens(block.get("content"))
+
+
+def tokens(content):
+    if isinstance(content, list):
+        return sum(IMAGE if part.get("type") == "image" else tokens(part.get("text", "")) for part in content)
+    return len(content or "") / CHARS_PER_TOKEN
+
+
+def short(n):
+    return f"{n / 1e6:.1f}M" if n >= 1e6 else f"{n / 1e3:.1f}k" if n >= 1e3 else f"{n:.0f}"
+
+
+def claude_logs(repo):
     """Claude Code keeps a JSONL per session under the repo's path, and one per sub-agent next to a .meta.json."""
     home = os.environ.get("CLAUDE_CONFIG_DIR", os.path.expanduser("~/.claude"))
     folder = os.path.join(home, "projects", re.sub(r"[^A-Za-z0-9]", "-", repo))
-    seen, found = set(), []
     for path in glob.glob(f"{folder}/*.jsonl") + glob.glob(f"{folder}/*/subagents/*.jsonl"):
         role = "writer"
         if os.path.basename(os.path.dirname(path)) == "subagents":
             meta = read_json(path[: -len(".jsonl")] + ".meta.json")
             role = "reviewer" if REVIEW.search(meta.get("description", "")) else "agent:" + meta.get("agentType", "")
+        yield path, role
+
+
+def reply(message, seen):
+    """Whether a message is a model reply not yet seen: a reply is logged once per content block, with one usage."""
+    if "usage" not in message or message.get("id") in seen or message.get("model") == "<synthetic>":
+        return False
+    seen.add(message.get("id"))
+    return True
+
+
+def claude_code(repo, start, end):
+    seen, found = set(), []
+    for path, role in claude_logs(repo):
         for entry in entries(path):
             message = entry.get("message") or {}
-            # A reply is logged once per content block, each with the same usage.
-            if "usage" not in message or message.get("id") in seen or message.get("model") == "<synthetic>":
-                continue
-            seen.add(message.get("id"))
-            if start < epoch(entry["timestamp"]) <= end:
+            if reply(message, seen) and start < epoch(entry["timestamp"]) <= end:
                 use = message["usage"]
                 found.append(((role, message["model"]), {
                     "input": use.get("input_tokens", 0),

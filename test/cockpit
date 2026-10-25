@@ -58,6 +58,28 @@ PY
 writer glm-4.6 1 5 7 50 9'
 }
 
+test_report_weighs_roles_and_what_is_sent_along() {
+  {
+    echo '{"type":"attachment","attachment":{"type":"skill_listing","content":"'"$(printf '%0350d' 0)"'"}}'
+    printf '%s' '{"type":"assistant","timestamp":"2026-10-23T10:30:00Z","message":{"id":"m1",' \
+      '"model":"claude-opus-5-5","content":[{"type":"tool_use","id":"t1","name":"Bash","input":{}}],' \
+      '"usage":{"input_tokens":0,"output_tokens":10,"cache_read_input_tokens":0,"cache_creation_input_tokens":1000}}}'
+    echo
+    printf '%s' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"t1","content":"' \
+      "$(printf '%0700d' 0)" '"}]}}'
+    echo
+    reply m2 2026-10-23T10:40:00Z claude-opus-5-5 0 10 1000 200
+  } > "$claude/s1.jsonl"
+  reply r1 2026-10-23T10:50:00Z claude-sonnet-5-5 0 0 0 500 > "$claude/s1/subagents/agent-a.jsonl"
+  echo '{"agentType":"general-purpose","description":"Review batch 2"}' > "$claude/s1/subagents/agent-a.meta.json"
+  python3 "$kit/cockpit/sdd-cockpit" report "$repo" 1792749600 1792753200 | tr -s ' ' > "$tmp/out"
+  for line in 'writer opus 2 1.7k 73%' 'reviewer sonnet 1 625 27%' 'A session starts with 1.0k tokens of context' \
+    'The longest reached 1.2k after 2 calls; cache reads are 4% of the cost.' 'tool results Bash 250 11%' \
+    'skill listing 135 6%'; do
+    grep -qF -- "$line" "$tmp/out" || { echo "    output lacks: $line"; sed 's/^/    | /' "$tmp/out"; return 1; }
+  done
+}
+
 names=${*:-$(declare -F | awk '$3 ~ /^test_/ { print $3 }')}
 failed=0
 for t in $names; do

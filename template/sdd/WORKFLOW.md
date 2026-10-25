@@ -73,12 +73,15 @@ proposes a refactor batch only when it pays.
    `bash sdd/bin/sdd audit --message .git/sdd/message`.
 6. Review: spawn a fresh reviewer, a new context that did not write the batch. It reads the staged diff, the contract
    and the coding style, reports findings with their evidence, and writes the quiz once the findings are fixed. It
-   then runs the audit of step 5 again, which checks the quiz.
+   then runs the audit of step 5 again, which checks the quiz. Give it a smaller model than the writer's unless the
+   batch is large or touches security or data. After a fix, send the same reviewer the change: it checks that its
+   quiz still holds for a fraction of a fresh one.
 7. Hand off: purpose, the decisions you took alone, evidence, limits and a short "understand this" for the human. The
-   human reads the diff, answers `QUIZ.md` and commits with `git commit -F .git/sdd/message`.
+   human reads the diff, answers `QUIZ.md` and commits with `git commit -F .git/sdd/message`. Start the next batch in
+   a fresh session: a long one reads its whole history again with every call.
 
 Wherever a fresh reviewer is asked for (plan, batch, module), a tool that cannot spawn one does its part itself and
-says so.
+says so; one that cannot pick a model or resume a sub-agent skips that.
 
 ## Quiz
 

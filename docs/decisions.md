@@ -145,3 +145,13 @@ tool's logs: supporting a new tool changes nothing in the repo, nor what an agen
 calls `sdd-cockpit usage`, whose output is the contract. _Rejected:_ a note per commit (its author names the person:
 watching people, not the product), the log readers in the repo (each tool would grow the harness), OpenTelemetry (a
 collector to run), prices (they change, tokens compare).
+
+## 23. Spend tokens where they pay (2026-10-25)
+
+The cockpit measured the harness on real logs: a sub-agent starts at 35 to 39k tokens before reading anything, a
+reviewer on Opus took 38% of the second pilot's cost, one of them 305 calls long, and `Bash` output 10%. So the
+reviewer gets a smaller model than the writer's unless the batch is large or touches security or data; after a fix,
+the same reviewer checks its quiz again (1 to 4k tokens in this kit; a fresh one costs about 50k, most of it its fixed
+start); each batch starts in a fresh session; tests and builds print little when green. The core stays git and bash:
+picking a model or resuming a sub-agent is a tool's feature, used where it exists and skipped where it does not.
+_Rejected:_ a review pack that hands the reviewer its reading (the fixed start dominates, it would save little).

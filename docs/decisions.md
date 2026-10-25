@@ -1,7 +1,7 @@
 # Decisions
 
 Numbers never change and no entry is deleted: a superseded entry shrinks to a line, and git keeps its text. Field
-notes from the pilot (September 2026) are the evidence behind most entries.
+notes from the pilot (September 2026) and a second pilot (October 2026) are the evidence behind most entries.
 
 ## 1. A harness, not a kit of guides (2026-10-03)
 
@@ -16,8 +16,8 @@ so drift becomes a ritual instead of a check).
 
 ## 3. Bash and git only (2026-10-03)
 
-git is already there; on Windows, Git for Windows brings bash, sed and awk. One script of about 240 lines lands in each
-project. _Rejected:_ Python (a 458-line runner was written: too heavy to copy into every project, and a runtime to
+git is already there; on Windows, Git for Windows brings bash, sed and awk. Two scripts, about 460 lines in all, land in
+each project. _Rejected:_ Python (a 458-line runner was written: too heavy to copy into every project, and a runtime to
 install); the pre-commit framework (needs Python and pip).
 
 ## 4. A native commit-msg hook (2026-10-03)

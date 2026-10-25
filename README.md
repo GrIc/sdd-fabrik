@@ -22,7 +22,7 @@ You were asked to deploy SDD-Fabrik in the current repository. Do this:
 3. Copy `<tmp>/template/` into the repository root without overwriting anything. Where a file already exists:
    - `AGENTS.md`: append the block between `<!-- sdd-fabrik -->` and `<!-- /sdd-fabrik -->`;
    - `CLAUDE.md`: add a line `@AGENTS.md`;
-   - `.gitattributes`: append its line, which keeps the script's line ends LF on Windows;
+   - `.gitattributes`: append its line, which keeps the scripts' line ends LF on Windows;
    - a CI workflow: add its step and `fetch-depth: 0` from `.github/workflows/sdd.yml` to it, or keep both;
    - anything else: stop and ask the human.
 4. Replace `<source>` and `<tag>` on the first line of `sdd/README.md` with the URL and the tag you deployed from.
@@ -55,6 +55,6 @@ The decisions behind this design, with the alternatives we rejected, are in [doc
 
 ## Develop the kit
 
-Edit `template/`, run `bash test/run`. See [AGENTS.md](AGENTS.md).
+Edit `template/`, run `bash test/run`, `bash test/ledger` and `bash test/cockpit`. See [AGENTS.md](AGENTS.md).
 
 MIT licensed, see [LICENSE](LICENSE).

@@ -189,7 +189,7 @@ the tokens by month, module, role and model, then per month the batches noted ag
 ## Uninstall (for agents)
 
 Remove `sdd/bin/`, `sdd/WORKFLOW.md`, the `commit-msg` hook if it holds `# sdd-fabrik` (or the
-`bash sdd/bin/sdd hook` line added to another hook), the `sdd/bin/ledger` lines of the other hooks, the `sdd/bin/sdd`
+`bash sdd/bin/sdd hook` line added to another hook), the `sdd/bin/ledger` lines of the other hooks, the `sdd/bin/*`
 line of `.gitattributes`, the `/QUIZ.md` line of `.git/info/exclude`, the block between the markers in `AGENTS.md`,
 the `@AGENTS.md` line of `CLAUDE.md`, the `.github/workflows/sdd.yml` step, and the deny rules added to your tool.
 Ask the human before removing the project's own knowledge: `sdd/README.md`, `coding-style.md`, `modules/`,

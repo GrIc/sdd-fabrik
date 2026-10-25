@@ -16,11 +16,14 @@ people. The details stay on each dev's machine, in `sdd-cockpit`; the repo only 
   [test_an_amend_counts_from_the_last_record](/test/ledger), [test_a_failed_cockpit_loses_no_window](/test/ledger).
 - Without `sdd-cockpit`, nothing is noted: [test_record_without_cockpit_notes_nothing](/test/ledger).
 - `sync` merges the remote's ledger into ours and pushes it, so that two devs' notes add up:
-  [test_sync_merges_two_devs_ledgers](/test/ledger).
+  [test_sync_merges_two_devs_ledgers](/test/ledger). A dev with no ledger fetches nothing:
+  [test_sync_without_a_ledger_fetches_nothing](/test/ledger).
 - `report` sums the ledger by month, module, role and model, then shows per month the batches noted against the
-  agent commits: [test_report_sums_by_month_module_role_and_model_then_shows_coverage](/test/ledger). Without a
-  ledger, it says how to fetch it: [test_report_without_a_ledger_says_how_to_fetch_it](/test/ledger).
+  agent commits, marked as the hook marks them:
+  [test_report_sums_by_month_module_role_and_model_then_shows_coverage](/test/ledger). Without a ledger, it says how
+  to fetch it: [test_report_without_a_ledger_says_how_to_fetch_it](/test/ledger).
 
-Constraints: as [checks](checks.md): bash 3.2 and git with POSIX tools.
+Constraints: as [checks](checks.md): bash 3.2 and git with POSIX tools, LF line ends even on a Windows checkout:
+[test_ledger_survives_a_crlf_checkout](/test/ledger).
 Non-goals: the readers of each agent's logs (they live in `sdd-cockpit`, so a new tool changes nothing here), prices,
-anonymity in a team of two (a module and a month can still name someone).
+anonymity when one person alone worked on a module in a month (the module and the month name them).

@@ -206,7 +206,7 @@ links() {
 }
 
 # Guidance for the agent, never a refusal: governs paths that match nothing, and the project's markdown against the
-# code it governs (WORKFLOW.md is the kit's).
+# code it governs (WORKFLOW.md and guide/ are the kit's).
 guidance() {
   local contract path paths= md code
   for contract in $(git ls-files 'sdd/modules/*.md'); do
@@ -216,7 +216,7 @@ guidance() {
         echo "NOTE $contract: $path matches no tracked file, a typo or code still to come."
     done
   done
-  md=$(git grep -I -h -c -v -e '^[[:space:]]*$' -- 'sdd/*.md' AGENTS.md ':!sdd/WORKFLOW.md' |
+  md=$(git grep -I -h -c -v -e '^[[:space:]]*$' -- 'sdd/*.md' AGENTS.md ':!sdd/WORKFLOW.md' ':!sdd/guide/' |
     awk '{ n += $1 } END { print n + 0 }')
   if [ -z "$paths" ]; then
     echo "NOTE $md lines of markdown, no contract yet."

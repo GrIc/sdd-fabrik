@@ -43,9 +43,9 @@ check can be bypassed.
   name or path. Its target may be relative to the contract or start at the repo root, with or without an anchor. Web
   links and links to markdown or to a directory are not checked:
   [test_audit_accepts_links_to_names_groups_and_files](/test/run).
-- Guidance starts with `NOTE` and never fails `audit` or a commit: the markdown ratio, governs paths that match nothing,
-  a quiz older than its batch, a right answer always in the same place:
-  [test_audit_notes_the_markdown_ratio](/test/run),
+- Guidance starts with `NOTE` and never fails `audit` or a commit: the markdown ratio, which leaves out the kit's
+  workflow and guides, governs paths that match nothing, a quiz older than its batch, a right answer always in the same
+  place: [test_audit_notes_the_markdown_ratio](/test/run), [test_markdown_ratio_leaves_out_the_kit_docs](/test/run),
   [test_audit_points_out_governs_paths_that_match_nothing](/test/run),
   [test_a_quiz_older_than_the_batch_only_warns](/test/run).
 

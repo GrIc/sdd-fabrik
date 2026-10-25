@@ -1,7 +1,15 @@
 # SDD-Fabrik workflow
 
-How a change is made in this repo. This file belongs to [SDD-Fabrik](https://github.com/GrIc/sdd-fabrik) and is
-replaced on upgrade: project rules go in [coding-style.md](coding-style.md) or in `AGENTS.md` outside the kit block.
+How a change is made in this repo. This file and `guide/` belong to [SDD-Fabrik](https://github.com/GrIc/sdd-fabrik)
+and are replaced on upgrade: project rules go in [coding-style.md](coding-style.md) or in `AGENTS.md` outside the kit
+block.
+
+Read a guide only when its case comes:
+
+- a new project, or existing code to adopt, as the first batch: [guide/start.md](guide/start.md);
+- work of several batches: [guide/plan.md](guide/plan.md);
+- what agents spend, by module and for each dev: [guide/tokens.md](guide/tokens.md);
+- upgrading or removing the kit: [guide/upgrade.md](guide/upgrade.md).
 
 ## Where things live
 
@@ -20,42 +28,6 @@ A file is created when first needed.
 | What a module must do, its acceptance | `sdd/modules/<module>.md`, linked to the tests that prove it |
 | Bugs and ideas caught in passing | `sdd/issues/<slug>.md` |
 | Implementation facts | code and tests |
-
-## GENESIS: a new project
-
-Ask the human, one question at a time: the first useful slice, for whom, the non-goals, whose coding conventions to
-follow, and the qualities that matter here: accessibility, devices, performance, cost, carbon. Write only what the
-first slice needs: `README.md`, `coding-style.md` with its first rules and commands, one contract per module the
-slice touches. Scaffold with the stack's generator, then strip what the slice does not use. The first delivery follows
-PLAN or COMPILE.
-
-## ADOPT: existing code
-
-Read the existing instructions, README, tests and entry points. Keep the behavior and the existing checks. Write the
-map, a coding style drawn from what the code already does, and contracts only where the intent is not obvious from code
-and tests, with `governs` paths checked by `git ls-files`. Changes you would like to make become issues, not contract
-text.
-
-## PLAN: work of several batches
-
-Work that takes more than one batch gets `sdd/changes/<slug>.md` and its line in `sdd/roadmap.md`. An issue taken up
-moves into the change's why and is deleted.
-
-```markdown
-# Search by tag
-
-Why: the reader picks a few tags and gets the articles that carry them.
-
-## Rank articles by matching tags (search)
-
-- Articles that carry every tag come first.
-```
-
-One `## <title> (<module>)` section per batch, in order, with the criteria the batch makes true. A fresh reviewer
-checks that each batch fits the size limit, touches one module and has testable criteria; the human validates the
-plan, which is committed with its first batch. The first section left is the next batch. The batch that empties the
-file deletes it and its roadmap line; then a fresh reviewer reads each module the change touched as a whole and
-proposes a refactor batch only when it pays.
 
 ## COMPILE: one batch
 
@@ -162,37 +134,3 @@ pushed commit, never the quiz. Everything here can be bypassed: it is there to h
 The hook compares the batch with HEAD: to amend an agent batch that changes files, run `git reset --soft HEAD^` and
 commit again. Merge pull requests with a merge commit or a rebase: a squash adds the batches up, so the size check
 fails on the default branch, or it drops their trailers.
-
-## Token ledger
-
-`sdd/bin/ledger` keeps what agents spent on each module, by month, in the git notes `sdd-ledger`: the cost of the
-product's features, with no commit, author or date. The hooks `install-hook` writes note it at each commit and share it
-at each push, unless the dev sets `git config sdd.ledger false` (`--global` for every repo). The tokens come from
-`sdd/bin/cockpit`, which reads the agents' logs on this machine: Claude Code's with bash and awk, opencode's with
-Python 3. `bash sdd/bin/cockpit report "$PWD"`, from the repo root and with Python 3, shows a dev where their own
-tokens went. To audit a clone, `git fetch origin refs/notes/sdd-ledger:refs/notes/sdd-ledger`, then
-`bash sdd/bin/ledger report`: the tokens by month, module, role and model, then per month the batches noted against
-the agent commits.
-
-## Upgrade (for agents)
-
-1. The first line of `sdd/README.md` gives the `<source>` and the deployed tag; without a URL there, the source is
-   `https://github.com/GrIc/sdd-fabrik`. `git ls-remote --tags --refs <source>` gives the latest `vX.Y.Z`.
-2. `git clone <source> <tmp>`; `git -C <tmp> diff <old> <new> -- template/ ':!template/sdd/bin/'` shows what changed
-   besides the scripts, which you replace without reading. Then `git -C <tmp> checkout -q <new>`.
-3. Replace `sdd/WORKFLOW.md` and the scripts in `sdd/bin/` with the new tag's (keep the project's changes to
-   `MAX_LINES` and `AGENT_EMAILS`), and the block between `<!-- sdd-fabrik -->` and `<!-- /sdd-fabrik -->` in
-   `AGENTS.md`. Apply the other template changes the diff shows, such as the CI workflow, with the human. Put the new
-   tag on the first line of `sdd/README.md`. Delete `<tmp>`, then run `bash sdd/bin/sdd install-hook`: a new version
-   may add a hook.
-4. Tell the human what changed and propose a commit message without `Agent-Assisted` or an agent's `Co-Authored-By`:
-   the files come from the kit.
-
-## Uninstall (for agents)
-
-Remove `sdd/bin/`, `sdd/WORKFLOW.md`, the `commit-msg`, `post-commit` and `pre-push` hooks that hold `# sdd-fabrik`
-(or the `sdd/bin/` lines added to other hooks), the `sdd/bin/*` line of `.gitattributes`, the `/QUIZ.md` line of
-`.git/info/exclude`, the block between the markers in `AGENTS.md`, the `@AGENTS.md` line of `CLAUDE.md`, the
-`.github/workflows/sdd.yml` step, and the deny rules added to your tool.
-Ask the human before removing the project's own knowledge: `sdd/README.md`, `coding-style.md`, `modules/`,
-`decisions.md` and the other topic files.

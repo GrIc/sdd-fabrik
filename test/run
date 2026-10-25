@@ -281,8 +281,10 @@ test_audit_accepts_links_to_names_groups_and_files() {
   lacks 'DRIFT'
 }
 
-test_markdown_ratio_leaves_out_the_kit_workflow() {
+test_markdown_ratio_leaves_out_the_kit_docs() {
   seq 1 50 > sdd/WORKFLOW.md
+  mkdir sdd/guide
+  seq 1 50 > sdd/guide/start.md
   git add -A
   succeeds bash sdd/bin/sdd audit
   says 'NOTE 8 lines of markdown'

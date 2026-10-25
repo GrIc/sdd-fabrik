@@ -7,6 +7,12 @@ This repo uses [SDD-Fabrik](https://github.com/GrIc/sdd-fabrik). Read [sdd/READM
 [sdd/WORKFLOW.md](sdd/WORKFLOW.md) (how a change is made) and [sdd/coding-style.md](sdd/coding-style.md) first.
 Intent governs purpose; code and tests establish facts.
 
+What the harness gives you, besides the checks the workflow runs:
+
+- `bash sdd/bin/sdd quiet <command>` prints one line when a command passes, its end when it fails.
+- `bash sdd/bin/cockpit report "$PWD"` shows where this dev's tokens went: [sdd/guide/tokens.md](sdd/guide/tokens.md).
+- A guide for each rarer case (first batch, plan, upgrade), listed at the top of the workflow.
+
 ### How you work
 
 Be lazy with effort, never with thought.

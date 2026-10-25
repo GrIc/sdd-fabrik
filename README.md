@@ -35,9 +35,9 @@ You were asked to deploy SDD-Fabrik in the current repository. Do this:
 7. Delete `<tmp>`. Report the files added and merged, the dependencies, and a proposed commit message with
    `Large-Batch: deploys SDD-Fabrik` (the script alone is over the size limit) and without `Agent-Assisted` or an
    agent's `Co-Authored-By` (the files come from the kit, not from you). The human commits.
-8. Then follow GENESIS (no code yet) or ADOPT (existing code) in `sdd/WORKFLOW.md`, as your first batch.
+8. Then follow GENESIS (no code yet) or ADOPT (existing code) in `sdd/guide/start.md`, as your first batch.
 
-To upgrade or uninstall, follow the last two sections of `sdd/WORKFLOW.md` in the deployed repository.
+To upgrade or uninstall, follow `sdd/guide/upgrade.md` in the deployed repository.
 
 ## How a batch flows
 

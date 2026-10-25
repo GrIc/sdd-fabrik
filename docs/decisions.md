@@ -34,8 +34,9 @@ URLs to fetch one by one.
 
 ## 6. Kit files and project files apart (2026-10-03)
 
-The kit owns `sdd/bin/sdd`, `sdd/WORKFLOW.md` and a marked block of `AGENTS.md`; upgrade replaces them. Everything else
-is the project's. _Rejected:_ one `sdd/README.md` mixing the workflow and the project map (every upgrade conflicts).
+The kit owns `sdd/bin/`, `sdd/WORKFLOW.md`, `sdd/guide/` and a marked block of `AGENTS.md`; upgrade replaces them.
+Everything else is the project's. _Rejected:_ one `sdd/README.md` mixing the workflow and the project map (every upgrade
+conflicts).
 
 ## 7. Two weights: agents are blocked, humans warned (2026-10-03)
 
@@ -182,3 +183,12 @@ it: the test logs keep that order. opencode's logs, a SQLite base, and the repor
 _Rejected:_ the report in awk (it weighs nested pieces of each entry: long and fragile, for a screen only the dev
 reads); opencode through the `sqlite3` program (missing from Git for Windows and most Linux installs, where Python is
 there).
+
+## 27. The workflow keeps the loop, guides keep the rest (2026-10-25)
+
+Every session reads `AGENTS.md` and `sdd/WORKFLOW.md`. The workflow keeps what each batch needs (COMPILE, the quiz,
+contracts, decisions, trailers); the cases met once in a while (the first batch, a plan, the tokens, upgrade and
+uninstall) move to `sdd/guide/`, linked from its top. What a session reads drops from 13.5k characters to 9.9k. The
+kit block of `AGENTS.md` lists in three lines what the harness gives an agent, so that it finds the tools without the
+dev. _Rejected:_ Agent Skills (each tool keeps them in its own folder, and their listing is sent with every session,
+as an `AGENTS.md` line is); a `sdd help` command (a call to learn what a line can say).

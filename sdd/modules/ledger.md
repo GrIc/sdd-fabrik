@@ -14,7 +14,9 @@ people. The details stay on each dev's machine, in `sdd-cockpit`; the repo only 
 - Each window starts where the last record ended, so that an amend counts nothing twice and a failed
   `sdd-cockpit` loses nothing:
   [test_an_amend_counts_from_the_last_record](/test/ledger), [test_a_failed_cockpit_loses_no_window](/test/ledger).
-- Without `sdd-cockpit`, nothing is noted: [test_record_without_cockpit_notes_nothing](/test/ledger).
+- Without `sdd-cockpit`, nothing is noted: [test_record_without_cockpit_notes_nothing](/test/ledger). The hooks
+  `install-hook` writes run `record` at each commit and `sync` at each push:
+  [test_installed_hooks_record_and_share_the_ledger](/test/ledger).
 - `sync` merges the remote's ledger into ours and pushes it, so that two devs' notes add up:
   [test_sync_merges_two_devs_ledgers](/test/ledger). A dev with no ledger fetches nothing:
   [test_sync_without_a_ledger_fetches_nothing](/test/ledger).

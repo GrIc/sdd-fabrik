@@ -28,8 +28,8 @@ Be lazy with effort, never with thought.
 - Mark your work `Agent-Assisted: yes` in the proposed commit message. Never commit, push, bypass a hook, or tick
   `QUIZ.md`: the human does.
 - Fix a red main before anything else. Run the CI checks locally before proposing a batch.
-- Each clone needs the hook once: if `.git/hooks/commit-msg` does not mention `sdd-fabrik`, run
-  `bash sdd/bin/sdd install-hook` and tell the human.
+- Each clone needs the hooks once: if `$(git rev-parse --git-path hooks)/pre-push` does not mention `sdd/bin/ledger`,
+  run `bash sdd/bin/sdd install-hook` and tell the human.
 
 ### INTAKE, always
 

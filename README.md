@@ -26,7 +26,7 @@ You were asked to deploy SDD-Fabrik in the current repository. Do this:
    - a CI workflow: add its step and `fetch-depth: 0` from `.github/workflows/sdd.yml` to it, or keep both;
    - anything else: stop and ask the human.
 4. Replace `<source>` and `<tag>` on the first line of `sdd/README.md` with the URL and the tag you deployed from.
-5. Run `bash sdd/bin/sdd install-hook`. If it declines because another hook is in place, show the human the line it
+5. Run `bash sdd/bin/sdd install-hook`. If it declines because another hook is in place, show the human the lines it
    printed.
 6. If your tool has a permission deny list, add `git commit`, `git push` and `--no-verify` to it. If it commits on its
    own (Aider does by default, without hooks), turn that off. Tell the human that for their other agents these rules

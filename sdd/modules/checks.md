@@ -26,6 +26,11 @@ check can be bypassed.
   [test_wrong_answer_explains_then_a_retry_passes](/test/run). `audit` checks its form, so that the reviewer, not the
   human, meets a malformed quiz: [test_audit_checks_the_quiz_before_the_human](/test/run),
   [test_a_see_line_may_cite_more_places](/test/run).
+- `install-hook` writes the `commit-msg`, `post-commit` and `pre-push` hooks, or prints the line to add to a hook it
+  did not write; each line passes in a repo without the harness:
+  [test_install_hook_respects_an_existing_hook](/test/run),
+  [test_install_hook_adds_the_ledger_hooks_that_pass_without_it](/test/run),
+  [test_the_line_for_a_shared_hook](/test/run).
 - `touched` lists the modules a commit changes, in code or contract, each with its changed lines, so that the token
   ledger can split a batch's cost: [test_touched_lists_each_module_with_its_lines](/test/run).
 - `quiet <command>` prints one line when the command passes and its last 30 lines when it fails, with its status:

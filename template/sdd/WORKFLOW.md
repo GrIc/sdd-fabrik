@@ -166,12 +166,12 @@ fails on the default branch, or it drops their trailers.
 ## Token ledger
 
 Optional. `sdd/bin/ledger` keeps what agents spent on each module, by month, in the git notes `sdd-ledger`: the cost of
-the product's features, with no commit, author or date. The tokens come from
-[`sdd-cockpit`](https://github.com/GrIc/sdd-fabrik/tree/main/cockpit), which each dev installs on their machine to see
-where their own tokens go; without it, nothing is noted. To take part, add
-`bash sdd/bin/ledger record` to `.git/hooks/post-commit` and `bash sdd/bin/ledger sync "$1"` to `.git/hooks/pre-push`.
-To audit a clone, `git fetch origin refs/notes/sdd-ledger:refs/notes/sdd-ledger`, then `bash sdd/bin/ledger report`:
-the tokens by month, module, role and model, then per month the batches noted against the agent commits.
+the product's features, with no commit, author or date. The hooks `install-hook` writes note it at each commit and
+share it at each push. The tokens come from [`sdd-cockpit`](https://github.com/GrIc/sdd-fabrik/tree/main/cockpit),
+which each dev installs on their machine to see where their own tokens go: installing it is taking part, and without
+it nothing is noted or sent. To audit a clone, `git fetch origin refs/notes/sdd-ledger:refs/notes/sdd-ledger`, then
+`bash sdd/bin/ledger report`: the tokens by month, module, role and model, then per month the batches noted against the
+agent commits.
 
 ## Upgrade (for agents)
 
@@ -182,15 +182,16 @@ the tokens by month, module, role and model, then per month the batches noted ag
 3. Replace `sdd/WORKFLOW.md` and the scripts in `sdd/bin/` with the new tag's (keep the project's changes to
    `MAX_LINES` and `AGENT_EMAILS`), and the block between `<!-- sdd-fabrik -->` and `<!-- /sdd-fabrik -->` in
    `AGENTS.md`. Apply the other template changes the diff shows, such as the CI workflow, with the human. Put the new
-   tag on the first line of `sdd/README.md`. Delete `<tmp>`.
+   tag on the first line of `sdd/README.md`. Delete `<tmp>`, then run `bash sdd/bin/sdd install-hook`: a new version
+   may add a hook.
 4. Tell the human what changed and propose a commit message without `Agent-Assisted` or an agent's `Co-Authored-By`:
    the files come from the kit.
 
 ## Uninstall (for agents)
 
-Remove `sdd/bin/`, `sdd/WORKFLOW.md`, the `commit-msg` hook if it holds `# sdd-fabrik` (or the
-`bash sdd/bin/sdd hook` line added to another hook), the `sdd/bin/ledger` lines of the other hooks, the `sdd/bin/*`
-line of `.gitattributes`, the `/QUIZ.md` line of `.git/info/exclude`, the block between the markers in `AGENTS.md`,
-the `@AGENTS.md` line of `CLAUDE.md`, the `.github/workflows/sdd.yml` step, and the deny rules added to your tool.
+Remove `sdd/bin/`, `sdd/WORKFLOW.md`, the `commit-msg`, `post-commit` and `pre-push` hooks that hold `# sdd-fabrik`
+(or the `sdd/bin/` lines added to other hooks), the `sdd/bin/*` line of `.gitattributes`, the `/QUIZ.md` line of
+`.git/info/exclude`, the block between the markers in `AGENTS.md`, the `@AGENTS.md` line of `CLAUDE.md`, the
+`.github/workflows/sdd.yml` step, and the deny rules added to your tool.
 Ask the human before removing the project's own knowledge: `sdd/README.md`, `coding-style.md`, `modules/`,
 `decisions.md` and the other topic files.

@@ -119,7 +119,15 @@ test_install_hook_respects_an_existing_hook() {
   printf '#!/bin/sh\nexit 0\n' > "$hook"
   fails bash sdd/bin/sdd install-hook
   says 'bash sdd/bin/sdd hook "$1"'
+  says "Installed $(git rev-parse --git-path hooks)/pre-push."
   grep -qx '/QUIZ.md' "$(git rev-parse --git-path info/exclude)"
+}
+
+test_install_hook_adds_the_ledger_hooks_that_pass_without_it() {
+  grep -qxF '[ ! -f sdd/bin/ledger ] || bash sdd/bin/ledger record' "$(git rev-parse --git-path hooks)/post-commit"
+  grep -qxF '[ ! -f sdd/bin/ledger ] || bash sdd/bin/ledger sync "$1"' "$(git rev-parse --git-path hooks)/pre-push"
+  git init -q --bare "$tmp/origin.git"
+  succeeds git push -q "$tmp/origin.git" HEAD:main
 }
 
 # A shared hook (core.hooksPath) runs in every repo: the line install-hook prints must block here and pass elsewhere.
@@ -127,8 +135,11 @@ test_the_line_for_a_shared_hook() {
   git config core.hooksPath "$tmp/hooks"
   fails bash sdd/bin/sdd install-hook
   says "Your commit-msg hook is $(git rev-parse --git-path hooks)/commit-msg"
+  says '[ ! -f sdd/bin/ledger ] || bash sdd/bin/ledger record'
+  says '[ ! -f sdd/bin/ledger ] || bash sdd/bin/ledger sync "$1"'
   mkdir "$tmp/hooks"
-  { echo '#!/bin/sh'; tail -n 1 "$out"; echo 'echo other checks pass'; } > "$tmp/hooks/commit-msg"
+  { echo '#!/bin/sh'; sed -n '/commit-msg hook/{n;p;}' "$out"; echo 'echo other checks pass'; } \
+    > "$tmp/hooks/commit-msg"
   chmod +x "$tmp/hooks/commit-msg"
   echo two >> src/search/a.py
   git add -A

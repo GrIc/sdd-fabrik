@@ -157,3 +157,11 @@ picking a model or resuming a sub-agent is a tool's feature, used where it exist
 _Rejected:_ a review pack that hands the reviewer its reading (the fixed start dominates, it would save little); a
 terse "caveman" style for the agents (it cuts output, about 8% of the cost against about 50% for cache reads, and
 blurs the quiz and the handoff, the text a human must understand).
+
+## 24. install-hook writes the ledger's hooks (2026-10-25)
+
+Each clone gets the `post-commit` and `pre-push` hooks with the `commit-msg` one, so that taking part in the ledger is
+only installing `sdd-cockpit`: without it, `record` stops at once and `sync` has nothing to send. Each line passes in a
+repo or a branch without the script, so a shared `core.hooksPath` takes them too. _Rejected:_ hook lines each dev adds
+by hand (forgotten in some clones, so the ledger misses batches); an `install-hook --ledger` option (one more choice
+per clone, for no saving).

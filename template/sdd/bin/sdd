@@ -305,21 +305,32 @@ quiet() {
   return "$status"
 }
 
+# Writes hook $1 with line $2, or prints the line for a hook it did not write. The line passes in a repo without the
+# script, such as an older branch or another repo sharing the hook.
+install_one() {
+  local hook
+  hook=$(git rev-parse --git-path hooks)/$1
+  if git config core.hooksPath > /dev/null || { [ -e "$hook" ] && ! grep -q '^# sdd-fabrik$' "$hook"; }; then
+    echo "Your $1 hook is $hook, or the file your hook manager builds it from. Add this line to it:" >&2
+    echo "$2" >&2
+    return 1
+  fi
+  mkdir -p "$(dirname "$hook")"
+  printf '#!/bin/sh\n# sdd-fabrik\n%s\n' "$2" > "$hook"
+  chmod +x "$hook"
+  echo "Installed $hook."
+}
+
+# The quiz checks each commit; the token ledger notes each commit and is shared at each push.
 install_hook() {
-  local hook exclude
+  local exclude status=0
   exclude=$(git rev-parse --git-path info/exclude)
   mkdir -p "$(dirname "$exclude")"
   grep -qx '/QUIZ.md' "$exclude" 2> /dev/null || echo '/QUIZ.md' >> "$exclude"
-  hook=$(git rev-parse --git-path hooks)/commit-msg
-  if git config core.hooksPath > /dev/null || { [ -e "$hook" ] && ! grep -q '^# sdd-fabrik$' "$hook"; }; then
-    echo "Your commit-msg hook is $hook, or the file your hook manager builds it from. Add this line to it:" >&2
-    echo '[ ! -f sdd/bin/sdd ] || bash sdd/bin/sdd hook "$1" || exit 1' >&2
-    exit 1
-  fi
-  mkdir -p "$(dirname "$hook")"
-  printf '#!/bin/sh\n# sdd-fabrik\nexec bash sdd/bin/sdd hook "$1"\n' > "$hook"
-  chmod +x "$hook"
-  echo "Installed $hook."
+  install_one commit-msg '[ ! -f sdd/bin/sdd ] || bash sdd/bin/sdd hook "$1" || exit 1' || status=1
+  install_one post-commit '[ ! -f sdd/bin/ledger ] || bash sdd/bin/ledger record' || status=1
+  install_one pre-push '[ ! -f sdd/bin/ledger ] || bash sdd/bin/ledger sync "$1"' || status=1
+  return $status
 }
 
 case ${1:-} in

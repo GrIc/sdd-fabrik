@@ -16,8 +16,8 @@ so drift becomes a ritual instead of a check).
 
 ## 3. Bash and git only (2026-10-03)
 
-git is already there; on Windows, Git for Windows brings bash, sed and awk. Two scripts, about 475 lines in all, land in
-each project, with the cockpit, the only Python, read-only and optional (decision 25). _Rejected:_ Python (a 458-line
+git is already there; on Windows, Git for Windows brings bash, sed and awk. Three scripts, about 570 lines in all, land
+in each project, and `cockpit.py`, the only Python, read-only and optional (decision 26). _Rejected:_ Python (a 458-line
 runner was written: too heavy to copy into every project, and a runtime to install); the pre-commit framework (needs
 Python and pip).
 
@@ -167,9 +167,18 @@ per clone, for no saving).
 
 ## 25. The cockpit ships with the harness (2026-10-25)
 
-`sdd/bin/cockpit` lands in each project with the other scripts. The ledger counts every dev who has Python 3, unless
-they set `git config sdd.ledger false`, and an agent can read the dev's costs with nothing to install. A new tool still
-costs agents nothing: an upgrade replaces the scripts without reading their diff. Python stays optional and read-only:
-without it, nothing is noted, and the checks need only bash and git (decision 3). _Rejected:_ a tool each dev installs
-on their PATH (most would not, the kit read as two products, and agents could not count on it); a ledger each dev
-joins by choice (it names no one, and a tower that misses most batches tells nothing).
+`sdd/bin/cockpit` lands in each project with the other scripts. The ledger counts every dev, unless they set
+`git config sdd.ledger false`, and an agent can read the dev's costs with nothing to install. A new tool still costs
+agents nothing: an upgrade replaces the scripts without reading their diff. _Rejected:_ a tool each dev installs on
+their PATH (most would not, the kit read as two products, and agents could not count on it); a ledger each dev joins
+by choice (it names no one, and a tower that misses most batches tells nothing).
+
+## 26. The ledger's reader needs no Python (2026-10-25)
+
+`bash sdd/bin/cockpit usage` reads Claude Code's logs with awk, so the ledger counts the devs without Python, most of
+them on Windows. On the logs of two repos, it gives the same sums as the Python reader did. A reply is matched where
+Claude Code writes its keys (model and id first, usage and timestamp last), so a change of its log format can silence
+it: the test logs keep that order. opencode's logs, a SQLite base, and the report stay in `cockpit.py`.
+_Rejected:_ the report in awk (it weighs nested pieces of each entry: long and fragile, for a screen only the dev
+reads); opencode through the `sqlite3` program (missing from Git for Windows and most Linux installs, where Python is
+there).

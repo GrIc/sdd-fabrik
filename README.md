@@ -5,7 +5,7 @@ A git hook and a CI step catch code that drifts from its contract, batches too b
 human has not understood yet. Everything is an incentive: any check can be bypassed, on purpose.
 
 Needs only git (on Windows, Git for Windows, which brings bash, sed and awk). Works on Linux, macOS and Windows.
-With Python 3, it also counts what agents spend on each feature.
+It also counts what agents spend on each feature; Python 3 adds opencode and the dev's own report.
 
 ## Deploy (for agents)
 

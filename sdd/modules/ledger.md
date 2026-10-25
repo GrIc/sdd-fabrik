@@ -5,8 +5,7 @@ governs: [template/sdd/bin/ledger, test/ledger]
 
 What agents spent on each module, by month, so that a team weighs the cost of its product's features, never of its
 people. The details stay on each dev's machine, in the [cockpit](cockpit.md); the repo only keeps the sums. On by
-default; without Python 3, or with `git config sdd.ledger false`, nothing is noted, and the ledger never stops a commit
-or a push.
+default; with `git config sdd.ledger false`, nothing is noted, and the ledger never stops a commit or a push.
 
 - `record` splits the tokens spent since the last commit over the modules HEAD changes, by their changed lines, into
   a note of the git notes `sdd-ledger` that hangs on a random key, written by `sdd-fabrik` on the first of the month:
@@ -15,9 +14,7 @@ or a push.
 - Each window starts where the last record ended, so that an amend counts nothing twice and a failed cockpit loses
   nothing:
   [test_an_amend_counts_from_the_last_record](/test/ledger), [test_a_failed_cockpit_loses_no_window](/test/ledger).
-- Without Python, or for a dev who turns it off, nothing is noted:
-  [test_record_without_python_notes_nothing](/test/ledger), [test_a_dev_who_turns_it_off_notes_nothing](/test/ledger).
-  The hooks
+- For a dev who turns it off, nothing is noted: [test_a_dev_who_turns_it_off_notes_nothing](/test/ledger). The hooks
   `install-hook` writes run `record` at each commit and `sync` at each push:
   [test_installed_hooks_record_and_share_the_ledger](/test/ledger).
 - `sync` merges the remote's ledger into ours and pushes it, so that two devs' notes add up:

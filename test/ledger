@@ -26,8 +26,9 @@ setup() {
 
 # Commits a change of $1 lines to search and $2 to import at time $3, then records it.
 batch() {
-  seq "$1" >> src/search/a.py
-  seq "$2" >> src/import/a.py
+  # BSD seq counts down: `seq 0` prints 1 and 0.
+  [ "$1" -eq 0 ] || seq "$1" >> src/search/a.py
+  [ "$2" -eq 0 ] || seq "$2" >> src/import/a.py
   git add -A
   GIT_COMMITTER_DATE=$3 git commit -qm batch -m 'Agent-Assisted: yes'
   bash sdd/bin/ledger record

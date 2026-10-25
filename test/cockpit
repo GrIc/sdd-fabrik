@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# Runs cockpit/sdd-cockpit against fake agent logs. Usage: bash test/cockpit [test_name...]
+set -u
+
+kit=$(cd "$(dirname "$0")/.." && pwd)
+
+# Empty log homes for both agents, and a repo path. The window runs from 10:00 to 11:00 UTC.
+setup() {
+  tmp=$(mktemp -d)
+  trap 'rm -rf "$tmp"' EXIT
+  repo=$tmp/repo
+  export CLAUDE_CONFIG_DIR=$tmp/claude XDG_DATA_HOME=$tmp/share
+  claude=$CLAUDE_CONFIG_DIR/projects/$(sed 's/[^A-Za-z0-9]/-/g' <<< "$repo")
+  mkdir -p "$claude/s1/subagents"
+}
+
+usage() { python3 "$kit/cockpit/sdd-cockpit" usage "$repo" 1792749600 1792753200 | tr '\t' ' '; }
+fails() { if [ "$1" != "$2" ]; then printf '    expected: %s\n    got:      %s\n' "$2" "$1"; return 1; fi; }
+
+# A Claude Code reply: id, time, model, input, output, cache read, cache write.
+reply() {
+  printf '{"timestamp":"%s","message":{"id":"%s","model":"%s","usage":{"input_tokens":%s,"output_tokens":%s,' \
+    "$2" "$1" "$3" "$4" "$5"
+  printf '"cache_read_input_tokens":%s,"cache_creation_input_tokens":%s}}}\n' "$6" "$7"
+}
+
+test_claude_code_splits_writer_and_reviewer_once_per_reply() {
+  {
+    reply m1 2026-10-23T10:30:00Z claude-opus-5-5 1 10 100 1000
+    reply m1 2026-10-23T10:30:00Z claude-opus-5-5 1 10 100 1000
+    reply m2 2026-10-23T09:30:00Z claude-opus-5-5 1 10 100 1000
+    reply m3 2026-10-23T10:40:00Z '<synthetic>' 0 0 0 0
+    printf '{"timestamp":"2026-10-23T10:59:00Z","mess'
+  } > "$claude/s1.jsonl"
+  reply r1 2026-10-23T10:50:00Z claude-sonnet-5-5 2 20 200 2000 > "$claude/s1/subagents/agent-a.jsonl"
+  echo '{"agentType":"general-purpose","description":"Review batch 2, write quiz"}' \
+    > "$claude/s1/subagents/agent-a.meta.json"
+  fails "$(usage)" 'reviewer sonnet 1 2 20 200 2000
+writer opus 1 1 10 100 1000'
+}
+
+test_opencode_child_session_is_the_reviewer() {
+  mkdir -p "$XDG_DATA_HOME/opencode"
+  python3 - "$XDG_DATA_HOME/opencode/opencode.db" "$repo" <<'PY'
+import json, sqlite3, sys
+db = sqlite3.connect(sys.argv[1])
+db.execute("create table session (id, parent_id, directory, title)")
+db.execute("create table message (id, session_id, time_created, data)")
+sessions = [("s1", None, sys.argv[2], "Build"), ("s2", "s1", sys.argv[2], "Review the batch")]
+db.executemany("insert into session values (?, ?, ?, ?)", sessions)
+for i, (session, role) in enumerate([("s1", "assistant"), ("s1", "user"), ("s2", "assistant")]):
+    tokens = {"input": 5, "output": 4, "reasoning": 3, "cache": {"read": 50, "write": 9}}
+    data = {"role": role, "agent": "build", "providerID": "openrouter", "modelID": "glm-4.6", "tokens": tokens}
+    db.execute("insert into message values (?, ?, ?, ?)", (i, session, 1792751400000, json.dumps(data)))
+db.commit()
+PY
+  fails "$(usage)" 'reviewer glm-4.6 1 5 7 50 9
+writer glm-4.6 1 5 7 50 9'
+}
+
+names=${*:-$(declare -F | awk '$3 ~ /^test_/ { print $3 }')}
+failed=0
+for t in $names; do
+  ( set -e; setup; "$t" )
+  if [ $? -eq 0 ]; then echo "ok   $t"; else echo "FAIL $t"; failed=$((failed + 1)); fi
+done
+echo "$failed failed"
+[ "$failed" -eq 0 ]

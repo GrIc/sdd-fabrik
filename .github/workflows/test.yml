@@ -17,6 +17,9 @@ jobs:
         shell: bash
       - run: PATH="/bin:$PATH" bash test/ledger
         shell: bash
+      - run: bash test/cockpit
+        if: runner.os != 'Windows'
+        shell: bash
   audit:
     runs-on: ubuntu-latest
     steps:

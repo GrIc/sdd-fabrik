@@ -1,0 +1,124 @@
+#!/usr/bin/env python3
+"""Where a dev's agent tokens go, read from the agents' own logs on this machine. Nothing leaves it but what the token
+ledger asks for.
+
+Install: copy this file to a folder on your PATH, such as ~/.local/bin, and make it executable. Needs Python 3.
+
+`sdd-cockpit usage <repo> <since> <until>` prints, for the token ledger (sdd/bin/ledger), the tokens spent in <repo>
+between two epoch seconds: one tab-separated line per role and model family, with calls, input, output (reasoning
+included), cache read and cache write tokens.
+"""
+import glob
+import json
+import os
+import re
+import sqlite3
+import sys
+from collections import defaultdict
+from datetime import datetime
+
+FIELDS = ["input", "output", "cache_read", "cache_write"]
+REVIEW = re.compile(r"review|quiz", re.I)
+
+
+def main():
+    if len(sys.argv) != 5 or sys.argv[1] != "usage":
+        sys.exit("usage: sdd-cockpit usage <repo> <since> <until>")
+    repo, start, end = sys.argv[2], int(sys.argv[3]), int(sys.argv[4])
+    rows = defaultdict(lambda: dict.fromkeys(["calls"] + FIELDS, 0))
+    for (role, model), tokens in claude_code(repo, start, end) + opencode(repo, start, end):
+        row = rows[role, family(model)]
+        row["calls"] += 1
+        for field in FIELDS:
+            row[field] += tokens[field]
+    for key in sorted(rows):
+        print("\t".join(list(key) + [str(rows[key][field]) for field in ["calls"] + FIELDS]))
+
+
+def claude_code(repo, start, end):
+    """Claude Code keeps a JSONL per session under the repo's path, and one per sub-agent next to a .meta.json."""
+    home = os.environ.get("CLAUDE_CONFIG_DIR", os.path.expanduser("~/.claude"))
+    folder = os.path.join(home, "projects", re.sub(r"[^A-Za-z0-9]", "-", repo))
+    seen, found = set(), []
+    for path in glob.glob(f"{folder}/*.jsonl") + glob.glob(f"{folder}/*/subagents/*.jsonl"):
+        role = "writer"
+        if os.path.basename(os.path.dirname(path)) == "subagents":
+            meta = read_json(path[: -len(".jsonl")] + ".meta.json")
+            role = "reviewer" if REVIEW.search(meta.get("description", "")) else "agent:" + meta.get("agentType", "")
+        for entry in entries(path):
+            message = entry.get("message") or {}
+            # A reply is logged once per content block, each with the same usage.
+            if "usage" not in message or message.get("id") in seen or message.get("model") == "<synthetic>":
+                continue
+            seen.add(message.get("id"))
+            if start < epoch(entry["timestamp"]) <= end:
+                use = message["usage"]
+                found.append(((role, message["model"]), {
+                    "input": use.get("input_tokens", 0),
+                    "output": use.get("output_tokens", 0),
+                    "cache_read": use.get("cache_read_input_tokens", 0),
+                    "cache_write": use.get("cache_creation_input_tokens", 0),
+                }))
+    return found
+
+
+def opencode(repo, start, end):
+    """opencode keeps every message in one SQLite base; a sub-agent runs in a child session."""
+    share = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
+    base = os.path.join(share, "opencode", "opencode.db")
+    if not os.path.exists(base):
+        return []
+    db = sqlite3.connect(f"file:{base}?mode=ro", uri=True)
+    found = []
+    for data, parent, title in db.execute(
+        "select m.data, s.parent_id, s.title from message m join session s on s.id = m.session_id"
+        " where s.directory = ? and m.time_created > ? and m.time_created <= ?", (repo, start * 1000, end * 1000)
+    ):
+        message = json.loads(data)
+        if message.get("role") != "assistant":
+            continue
+        tokens = message.get("tokens", {})
+        found.append(((opencode_role(parent, title, message), message["modelID"]), {
+            "input": tokens.get("input", 0),
+            # Claude Code counts thinking in its output, opencode apart: output includes reasoning in both.
+            "output": tokens.get("output", 0) + tokens.get("reasoning", 0),
+            "cache_read": tokens.get("cache", {}).get("read", 0),
+            "cache_write": tokens.get("cache", {}).get("write", 0),
+        }))
+    return found
+
+
+def opencode_role(parent, title, message):
+    if not parent:
+        return "writer"
+    return "reviewer" if REVIEW.search(title or "") else "agent:" + message["agent"]
+
+
+def family(model):
+    """claude-opus-5-5 is opus: the shared ledger need not tell apart who runs which version."""
+    match = re.search(r"opus|sonnet|haiku|fable", model)
+    return match.group() if match else model
+
+
+def entries(path):
+    """The entries of a JSONL log. A session still running may hold a half-written last line."""
+    with open(path, encoding="utf-8") as log:
+        for line in log:
+            try:
+                yield json.loads(line)
+            except json.JSONDecodeError:
+                pass
+
+
+def epoch(timestamp):
+    return datetime.fromisoformat(timestamp.replace("Z", "+00:00")).timestamp()
+
+
+def read_json(path):
+    if not os.path.exists(path):
+        return {}
+    with open(path) as file:
+        return json.load(file)
+
+
+main()

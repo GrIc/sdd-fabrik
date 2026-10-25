@@ -15,6 +15,8 @@ jobs:
       # /bin first: on macOS, /bin/bash is 3.2, the oldest bash the script supports.
       - run: PATH="/bin:$PATH" bash test/run
         shell: bash
+      - run: PATH="/bin:$PATH" bash test/ledger
+        shell: bash
   audit:
     runs-on: ubuntu-latest
     steps:

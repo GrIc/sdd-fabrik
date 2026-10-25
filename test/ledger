@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+# Runs template/sdd/bin/ledger against throwaway repos and a fake sdd-cockpit. Usage: bash test/ledger [test_name...]
+set -u
+
+kit=$(cd "$(dirname "$0")/.." && pwd)
+export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null
+export GIT_AUTHOR_NAME=Dev GIT_AUTHOR_EMAIL=dev@example.test GIT_COMMITTER_NAME=Dev GIT_COMMITTER_EMAIL=dev@example.test
+
+# A remote, and a clone of it in $tmp/a with the harness and two modules, search and import.
+# The fake sdd-cockpit prints $tmp/usage and keeps its arguments in $tmp/args.
+setup() {
+  tmp=$(mktemp -d)
+  trap 'rm -rf "$tmp"' EXIT
+  mkdir "$tmp/bin"
+  printf '#!/bin/sh\necho "$@" > "%s/args"\ncat "%s/usage"\n' "$tmp" "$tmp" > "$tmp/bin/sdd-cockpit"
+  chmod +x "$tmp/bin/sdd-cockpit"
+  PATH=$tmp/bin:$PATH
+  git -c init.defaultBranch=main init -q --bare "$tmp/origin.git"
+  git clone -q "$tmp/origin.git" "$tmp/a" 2> /dev/null && cd "$tmp/a"
+  mkdir -p sdd/bin sdd/modules src/search src/import
+  cp "$kit/template/sdd/bin/sdd" "$kit/template/sdd/bin/ledger" sdd/bin/
+  printf -- '---\ngoverns: [src/search]\n---\n# search\n' > sdd/modules/search.md
+  printf -- '---\ngoverns: [src/import]\n---\n# import\n' > sdd/modules/import.md
+  echo one | tee src/search/a.py > src/import/a.py
+  git add -A
+  GIT_COMMITTER_DATE=2026-10-23T10:00:00Z git commit -qm 'Adopt SDD-Fabrik'
+  git push -q origin HEAD:main
+}
+
+# Commits a change of $1 lines to search and $2 to import at time $3, then records it.
+batch() {
+  seq "$1" >> src/search/a.py
+  seq "$2" >> src/import/a.py
+  git add -A
+  GIT_COMMITTER_DATE=$3 git commit -qm batch
+  bash sdd/bin/ledger record
+}
+
+ledger() { git ls-tree -r "${1:-refs/notes/sdd-ledger}" | awk '{ print $3 }' | git cat-file --batch | grep '^v1'; }
+fails() { if [ "$1" != "$2" ]; then printf '    expected: %s\n    got:      %s\n' "$2" "$1"; return 1; fi; }
+
+test_record_splits_a_batch_by_module_on_no_commit() {
+  printf 'writer\topus\t4\t40\t400\t4000\t8\n' > "$tmp/usage"
+  batch 3 1 2026-10-23T11:00:00Z
+  fails "$(ledger | tr '\t' ' ')" 'v1 2026-10 import writer opus 1 10 100 1000 2
+v1 2026-10 search writer opus 3 30 300 3000 6'
+  fails "$(git log -1 --format='%an %aI %cI' refs/notes/sdd-ledger)" \
+    'sdd-fabrik 2026-10-01T00:00:00+00:00 2026-10-01T00:00:00+00:00'
+  ! git notes --ref sdd-ledger list HEAD 2> /dev/null
+}
+
+test_a_batch_outside_the_modules_goes_to_a_dash() {
+  printf 'writer\topus\t1\t1\t1\t1\t1\n' > "$tmp/usage"
+  echo doc > README.md
+  git add -A
+  git commit -qm doc
+  bash sdd/bin/ledger record
+  fails "$(ledger | cut -f3)" '-'
+}
+
+test_an_amend_counts_from_the_last_record() {
+  printf 'writer\topus\t1\t1\t1\t1\t1\n' > "$tmp/usage"
+  batch 1 0 2026-10-23T11:00:00Z
+  GIT_COMMITTER_DATE=2026-10-23T12:00:00Z git commit -q --amend -m again
+  bash sdd/bin/ledger record
+  fails "$(cut -d' ' -f3-4 "$tmp/args")" '1792753200 1792756800'
+}
+
+test_a_failed_cockpit_loses_no_window() {
+  cp "$tmp/bin/sdd-cockpit" "$tmp/cockpit"
+  printf '#!/bin/sh\nexit 1\n' > "$tmp/bin/sdd-cockpit"
+  ! batch 1 0 2026-10-23T11:00:00Z
+  cp "$tmp/cockpit" "$tmp/bin/sdd-cockpit"
+  printf 'writer\topus\t1\t1\t1\t1\t1\n' > "$tmp/usage"
+  batch 1 0 2026-10-23T12:00:00Z
+  fails "$(cut -d' ' -f3-4 "$tmp/args")" '1792749600 1792756800'
+}
+
+test_record_without_cockpit_notes_nothing() {
+  rm "$tmp/bin/sdd-cockpit"
+  batch 1 0 2026-10-23T11:00:00Z
+  ! git rev-parse -q --verify refs/notes/sdd-ledger
+}
+
+test_sync_merges_two_devs_ledgers() {
+  printf 'writer\topus\t1\t1\t1\t1\t1\n' > "$tmp/usage"
+  batch 1 0 2026-10-23T11:00:00Z
+  git clone -q "$tmp/origin.git" "$tmp/b" 2> /dev/null
+  bash sdd/bin/ledger sync
+  cd "$tmp/b"
+  printf 'reviewer\tsonnet\t1\t1\t1\t1\t1\n' > "$tmp/usage"
+  batch 0 1 2026-10-23T12:00:00Z
+  bash sdd/bin/ledger sync
+  git fetch -q origin refs/notes/sdd-ledger:refs/remotes/ledger
+  fails "$(ledger refs/remotes/ledger | cut -f3-4 | sort | tr '\t' ' ')" 'import reviewer
+search writer'
+}
+
+names=${*:-$(declare -F | awk '$3 ~ /^test_/ { print $3 }')}
+failed=0
+for t in $names; do
+  ( set -e; setup; "$t" )
+  if [ $? -eq 0 ]; then echo "ok   $t"; else echo "FAIL $t"; failed=$((failed + 1)); fi
+done
+echo "$failed failed"
+[ "$failed" -eq 0 ]

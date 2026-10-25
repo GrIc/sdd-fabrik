@@ -134,3 +134,14 @@ The deploying agent fetches the kit from the URL the human gives, GitHub by defa
 first line of `sdd/README.md`; upgrade reads it back. A team behind an internal forge mirrors the repo, tags included.
 _Rejected:_ a fork for the internal forge (two sources to keep in step); the GitHub URL hard-coded in deploy and
 upgrade (unreachable or unwanted from some networks).
+
+## 22. A token ledger by module, not by person (2026-10-25)
+
+What agents spend is summed by module and month in the git notes `sdd-ledger`: each batch under a random key, written
+by `sdd-fabrik` on the first of the month, so that no note leads to a commit, its author or its day. A batch changes
+one module (decision 9), so its cost goes there; a `Large-Batch` splits by changed lines. The details (sessions,
+sub-agents, MCP, skills, models) stay on the dev's machine, in `sdd-cockpit`, which also holds the readers of each
+tool's logs: supporting a new tool changes nothing in the repo, nor what an agent reads at an upgrade. The repo only
+calls `sdd-cockpit usage`, whose output is the contract. _Rejected:_ a note per commit (its author names the person:
+watching people, not the product), the log readers in the repo (each tool would grow the harness), OpenTelemetry (a
+collector to run), prices (they change, tokens compare).

@@ -160,23 +160,31 @@ The hook compares the batch with HEAD: to amend an agent batch that changes file
 commit again. Merge pull requests with a merge commit or a rebase: a squash adds the batches up, so the size check
 fails on the default branch, or it drops their trailers.
 
+## Token ledger
+
+Optional. `sdd/bin/ledger` keeps what agents spent on each module, by month, in the git notes `sdd-ledger`: the cost of
+the product's features, with no commit, author or date. The tokens come from `sdd-cockpit`, which each dev installs on
+their machine to see where their own tokens go; without it, nothing is noted. To take part, add
+`bash sdd/bin/ledger record` to `.git/hooks/post-commit` and `bash sdd/bin/ledger sync "$1"` to `.git/hooks/pre-push`.
+
 ## Upgrade (for agents)
 
 1. The first line of `sdd/README.md` gives the `<source>` and the deployed tag; without a URL there, the source is
    `https://github.com/GrIc/sdd-fabrik`. `git ls-remote --tags --refs <source>` gives the latest `vX.Y.Z`.
 2. `git clone <source> <tmp>`; `git -C <tmp> diff <old> <new> -- template/` shows what changed. Then
    `git -C <tmp> checkout -q <new>`.
-3. Replace `sdd/WORKFLOW.md` and `sdd/bin/sdd` with the new tag's (keep the project's changes to `MAX_LINES` and
-   `AGENT_EMAILS`), and the block between `<!-- sdd-fabrik -->` and `<!-- /sdd-fabrik -->` in `AGENTS.md`. Apply the
-   other template changes the diff shows, such as the CI workflow, with the human. Put the new tag on the first line
-   of `sdd/README.md`. Delete `<tmp>`.
+3. Replace `sdd/WORKFLOW.md` and the scripts in `sdd/bin/` with the new tag's (keep the project's changes to
+   `MAX_LINES` and `AGENT_EMAILS`), and the block between `<!-- sdd-fabrik -->` and `<!-- /sdd-fabrik -->` in
+   `AGENTS.md`. Apply the other template changes the diff shows, such as the CI workflow, with the human. Put the new
+   tag on the first line of `sdd/README.md`. Delete `<tmp>`.
 4. Tell the human what changed and propose a commit message without `Agent-Assisted` or an agent's `Co-Authored-By`:
    the files come from the kit.
 
 ## Uninstall (for agents)
 
 Remove `sdd/bin/`, `sdd/WORKFLOW.md`, the `commit-msg` hook if it holds `# sdd-fabrik` (or the
-`bash sdd/bin/sdd hook` line added to another hook), the `sdd/bin/sdd` line of `.gitattributes`, the `/QUIZ.md` line
-of `.git/info/exclude`, the block between the markers in `AGENTS.md`, the `@AGENTS.md` line of `CLAUDE.md`, the
-`.github/workflows/sdd.yml` step, and the deny rules added to your tool. Ask the human before removing the project's
-own knowledge: `sdd/README.md`, `coding-style.md`, `modules/`, `decisions.md` and the other topic files.
+`bash sdd/bin/sdd hook` line added to another hook), the `sdd/bin/ledger` lines of the other hooks, the `sdd/bin/sdd`
+line of `.gitattributes`, the `/QUIZ.md` line of `.git/info/exclude`, the block between the markers in `AGENTS.md`,
+the `@AGENTS.md` line of `CLAUDE.md`, the `.github/workflows/sdd.yml` step, and the deny rules added to your tool.
+Ask the human before removing the project's own knowledge: `sdd/README.md`, `coding-style.md`, `modules/`,
+`decisions.md` and the other topic files.

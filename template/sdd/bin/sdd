@@ -36,6 +36,18 @@ modules() {
   git ls-tree --name-only "$1" sdd/modules/ | awk -F/ 'sub(/\.md$/, "", $NF) { printf "%s%s", sep, $NF; sep = ", " }'
 }
 
+# The modules whose code or contract commit $1 changes, each with its changed lines, tab-separated.
+touched() {
+  local parent contract
+  parent=$(git rev-parse -q --verify "$1^" || echo "$EMPTY_TREE")
+  for contract in $(git ls-tree -r --name-only "$1" sdd/modules/ | awk '/\.md$/'); do
+    git diff --numstat --no-renames "$parent" "$1" -- "$contract" $(governs "$1:$contract") |
+      awk -F '\t' -v module="$(basename "$contract" .md)" '
+        $1 != "-" { n += $1 + $2 }
+        END { if (n) print module "\t" n }'
+  done
+}
+
 # Checks the change from $1 to $2 (commits or trees) under the commit message $3.
 # Sets changed (the changed files), errors (fatal for everyone), findings (fatal for agents only) and notes.
 check() {
@@ -309,8 +321,9 @@ case ${1:-} in
     echo 'quiz: QUIZ.md'
     echo "key: $(quiz_key)" ;;
   install-hook) install_hook ;;
+  touched) touched "${2:-HEAD}" ;;
   *)
     echo 'usage: bash sdd/bin/sdd hook <message-file> | audit [--message <file> | --range <base>..<tip>]' >&2
-    echo '       bash sdd/bin/sdd fingerprint | install-hook' >&2
+    echo '       bash sdd/bin/sdd fingerprint | install-hook | touched [<commit>]' >&2
     exit 2 ;;
 esac

@@ -26,6 +26,8 @@ check can be bypassed.
   [test_wrong_answer_explains_then_a_retry_passes](/test/run). `audit` checks its form, so that the reviewer, not the
   human, meets a malformed quiz: [test_audit_checks_the_quiz_before_the_human](/test/run),
   [test_a_see_line_may_cite_more_places](/test/run).
+- `touched` lists the modules a commit changes, in code or contract, each with its changed lines, so that the token
+  ledger can split a batch's cost: [test_touched_lists_each_module_with_its_lines](/test/run).
 - CI replays drift and size on each new commit, never the quiz: [test_range_checks_each_commit](/test/run).
 - A link in a contract is drift when the commit lacks the file it points to, or when its text is neither found, as
   whole words, in that file, nor its name or path: [test_a_link_to_a_missing_file_is_drift](/test/run),

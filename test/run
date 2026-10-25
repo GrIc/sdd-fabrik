@@ -188,6 +188,16 @@ test_large_batch_lifts_both_limits() {
   says 'NOTE the batch changes code of 2 modules: Large-Batch lifts it.'
 }
 
+test_touched_lists_each_module_with_its_lines() {
+  printf 'two\nthree\n' >> src/search/a.py
+  echo '# search' >> sdd/modules/search.md
+  echo two >> src/import/a.py
+  echo doc > README.md
+  git add -A
+  git commit -qm 'Change both' 2> /dev/null
+  [ "$(bash sdd/bin/sdd touched)" = "$(printf 'import\t1\nsearch\t3')" ]
+}
+
 test_audit_notes_the_markdown_ratio() {
   succeeds bash sdd/bin/sdd audit
   says 'NOTE 8 lines of markdown for 2 lines of governed code, ratio 4.00 (guideline: at most 1).'

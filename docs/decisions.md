@@ -16,9 +16,10 @@ so drift becomes a ritual instead of a check).
 
 ## 3. Bash and git only (2026-10-03)
 
-git is already there; on Windows, Git for Windows brings bash, sed and awk. Two scripts, about 460 lines in all, land in
-each project. _Rejected:_ Python (a 458-line runner was written: too heavy to copy into every project, and a runtime to
-install); the pre-commit framework (needs Python and pip).
+git is already there; on Windows, Git for Windows brings bash, sed and awk. Two scripts, about 475 lines in all, land in
+each project, with the cockpit, the only Python, read-only and optional (decision 25). _Rejected:_ Python (a 458-line
+runner was written: too heavy to copy into every project, and a runtime to install); the pre-commit framework (needs
+Python and pip).
 
 ## 4. A native commit-msg hook (2026-10-03)
 
@@ -140,11 +141,9 @@ upgrade (unreachable or unwanted from some networks).
 What agents spend is summed by module and month in the git notes `sdd-ledger`: each batch under a random key, written
 by `sdd-fabrik` on the first of the month, so that no note leads to a commit, its author or its day. A batch changes
 one module (decision 9), so its cost goes there; a `Large-Batch` splits by changed lines. The details (sessions,
-sub-agents, MCP, skills, models) stay on the dev's machine, in `sdd-cockpit`, which also holds the readers of each
-tool's logs: supporting a new tool changes nothing in the repo, nor what an agent reads at an upgrade. The repo only
-calls `sdd-cockpit usage`, whose output is the contract. _Rejected:_ a note per commit (its author names the person:
-watching people, not the product), the log readers in the repo (each tool would grow the harness), OpenTelemetry (a
-collector to run), prices (they change, tokens compare).
+sub-agents, MCP, skills, models) stay on the dev's machine, in the cockpit (decision 25); the ledger only reads its
+`usage`, whose output is the contract. _Rejected:_ a note per commit (its author names the person: watching people,
+not the product), OpenTelemetry (a collector to run), prices (they change, tokens compare).
 
 ## 23. Spend tokens where they pay (2026-10-25)
 
@@ -160,8 +159,17 @@ blurs the quiz and the handoff, the text a human must understand).
 
 ## 24. install-hook writes the ledger's hooks (2026-10-25)
 
-Each clone gets the `post-commit` and `pre-push` hooks with the `commit-msg` one, so that taking part in the ledger is
-only installing `sdd-cockpit`: without it, `record` stops at once and `sync` has nothing to send. Each line passes in a
+Each clone gets the `post-commit` and `pre-push` hooks with the `commit-msg` one, so that the ledger misses no
+batch: without Python, `record` stops at once and `sync` has nothing to send. Each line passes in a
 repo or a branch without the script, so a shared `core.hooksPath` takes them too. _Rejected:_ hook lines each dev adds
 by hand (forgotten in some clones, so the ledger misses batches); an `install-hook --ledger` option (one more choice
 per clone, for no saving).
+
+## 25. The cockpit ships with the harness (2026-10-25)
+
+`sdd/bin/cockpit` lands in each project with the other scripts. The ledger counts every dev who has Python 3, unless
+they set `git config sdd.ledger false`, and an agent can read the dev's costs with nothing to install. A new tool still
+costs agents nothing: an upgrade replaces the scripts without reading their diff. Python stays optional and read-only:
+without it, nothing is noted, and the checks need only bash and git (decision 3). _Rejected:_ a tool each dev installs
+on their PATH (most would not, the kit read as two products, and agents could not count on it); a ledger each dev
+joins by choice (it names no one, and a tower that misses most batches tells nothing).

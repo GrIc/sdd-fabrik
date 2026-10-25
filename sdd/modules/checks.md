@@ -27,7 +27,7 @@ check can be bypassed.
   human, meets a malformed quiz: [test_audit_checks_the_quiz_before_the_human](/test/run),
   [test_a_see_line_may_cite_more_places](/test/run).
 - `install-hook` writes the `commit-msg`, `post-commit` and `pre-push` hooks, or prints the line to add to a hook it
-  did not write; each line passes in a repo without the harness:
+  did not write; each line passes in a repo without the harness. It says how to turn the ledger off:
   [test_install_hook_respects_an_existing_hook](/test/run),
   [test_install_hook_adds_the_ledger_hooks_that_pass_without_it](/test/run),
   [test_the_line_for_a_shared_hook](/test/run).

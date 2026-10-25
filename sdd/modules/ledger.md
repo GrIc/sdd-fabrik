@@ -4,17 +4,20 @@ governs: [template/sdd/bin/ledger, test/ledger]
 # ledger
 
 What agents spent on each module, by month, so that a team weighs the cost of its product's features, never of its
-people. The details stay on each dev's machine, in `sdd-cockpit`; the repo only keeps the sums. Optional: without
-`sdd-cockpit`, nothing is noted, and the ledger never stops a commit or a push.
+people. The details stay on each dev's machine, in the [cockpit](cockpit.md); the repo only keeps the sums. On by
+default; without Python 3, or with `git config sdd.ledger false`, nothing is noted, and the ledger never stops a commit
+or a push.
 
 - `record` splits the tokens spent since the last commit over the modules HEAD changes, by their changed lines, into
   a note of the git notes `sdd-ledger` that hangs on a random key, written by `sdd-fabrik` on the first of the month:
   [test_record_splits_a_batch_by_module_on_no_commit](/test/ledger). A batch outside the modules goes to `-`:
   [test_a_batch_outside_the_modules_goes_to_a_dash](/test/ledger).
-- Each window starts where the last record ended, so that an amend counts nothing twice and a failed
-  `sdd-cockpit` loses nothing:
+- Each window starts where the last record ended, so that an amend counts nothing twice and a failed cockpit loses
+  nothing:
   [test_an_amend_counts_from_the_last_record](/test/ledger), [test_a_failed_cockpit_loses_no_window](/test/ledger).
-- Without `sdd-cockpit`, nothing is noted: [test_record_without_cockpit_notes_nothing](/test/ledger). The hooks
+- Without Python, or for a dev who turns it off, nothing is noted:
+  [test_record_without_python_notes_nothing](/test/ledger), [test_a_dev_who_turns_it_off_notes_nothing](/test/ledger).
+  The hooks
   `install-hook` writes run `record` at each commit and `sync` at each push:
   [test_installed_hooks_record_and_share_the_ledger](/test/ledger).
 - `sync` merges the remote's ledger into ours and pushes it, so that two devs' notes add up:
@@ -27,5 +30,5 @@ people. The details stay on each dev's machine, in `sdd-cockpit`; the repo only 
 
 Constraints: as [checks](checks.md): bash 3.2 and git with POSIX tools, LF line ends even on a Windows checkout:
 [test_ledger_survives_a_crlf_checkout](/test/ledger).
-Non-goals: the readers of each agent's logs (they live in `sdd-cockpit`, so a new tool changes nothing here), prices,
+Non-goals: the readers of each agent's logs (they live in the cockpit, so a new tool changes nothing here), prices,
 anonymity when one person alone worked on a module in a month (the module and the month name them).

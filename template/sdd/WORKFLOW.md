@@ -165,20 +165,20 @@ fails on the default branch, or it drops their trailers.
 
 ## Token ledger
 
-Optional. `sdd/bin/ledger` keeps what agents spent on each module, by month, in the git notes `sdd-ledger`: the cost of
-the product's features, with no commit, author or date. The hooks `install-hook` writes note it at each commit and
-share it at each push. The tokens come from [`sdd-cockpit`](https://github.com/GrIc/sdd-fabrik/tree/main/cockpit),
-which each dev installs on their machine to see where their own tokens go: installing it is taking part, and without
-it nothing is noted or sent. To audit a clone, `git fetch origin refs/notes/sdd-ledger:refs/notes/sdd-ledger`, then
-`bash sdd/bin/ledger report`: the tokens by month, module, role and model, then per month the batches noted against the
-agent commits.
+`sdd/bin/ledger` keeps what agents spent on each module, by month, in the git notes `sdd-ledger`: the cost of the
+product's features, with no commit, author or date. The hooks `install-hook` writes note it at each commit and share it
+at each push. The tokens come from `sdd/bin/cockpit`, which reads the agents' logs on this machine and needs Python 3:
+without it, or with `git config sdd.ledger false` (`--global` for every repo), nothing is noted or sent.
+`python3 sdd/bin/cockpit report "$PWD"`, from the repo root, shows a dev where their own tokens went. To audit a
+clone, `git fetch origin refs/notes/sdd-ledger:refs/notes/sdd-ledger`, then `bash sdd/bin/ledger report`: the tokens
+by month, module, role and model, then per month the batches noted against the agent commits.
 
 ## Upgrade (for agents)
 
 1. The first line of `sdd/README.md` gives the `<source>` and the deployed tag; without a URL there, the source is
    `https://github.com/GrIc/sdd-fabrik`. `git ls-remote --tags --refs <source>` gives the latest `vX.Y.Z`.
-2. `git clone <source> <tmp>`; `git -C <tmp> diff <old> <new> -- template/` shows what changed. Then
-   `git -C <tmp> checkout -q <new>`.
+2. `git clone <source> <tmp>`; `git -C <tmp> diff <old> <new> -- template/ ':!template/sdd/bin/'` shows what changed
+   besides the scripts, which you replace without reading. Then `git -C <tmp> checkout -q <new>`.
 3. Replace `sdd/WORKFLOW.md` and the scripts in `sdd/bin/` with the new tag's (keep the project's changes to
    `MAX_LINES` and `AGENT_EMAILS`), and the block between `<!-- sdd-fabrik -->` and `<!-- /sdd-fabrik -->` in
    `AGENTS.md`. Apply the other template changes the diff shows, such as the CI workflow, with the human. Put the new

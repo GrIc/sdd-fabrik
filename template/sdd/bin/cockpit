@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 """Where a dev's agent tokens go, read from the agents' own logs on this machine. Nothing leaves it but what the token
-ledger asks for.
+ledger asks for. Needs Python 3.
 
-Install: copy this file to a folder on your PATH, such as ~/.local/bin, and make it executable. Needs Python 3.
+`python3 sdd/bin/cockpit report <repo> [<since> <until>]` shows where the tokens spent in <repo> went, over the last 7
+days by default: by role and model, the context each log starts with and reaches, and what is sent along with the
+calls.
 
-`sdd-cockpit report <repo> [<since> <until>]` shows where the tokens spent in <repo> went, over the last 7 days by
-default: by role and model, the context each log starts with and reaches, and what is sent along with the calls.
-
-`sdd-cockpit usage <repo> <since> <until>` prints, for the token ledger (sdd/bin/ledger), the tokens spent in <repo>
-between two epoch seconds: one tab-separated line per role and model family, with calls, input, output (reasoning
-included), cache read and cache write tokens.
+`python3 sdd/bin/cockpit usage <repo> <since> <until>` prints, for the token ledger (sdd/bin/ledger), the tokens spent
+in <repo> between two epoch seconds: one tab-separated line per role and model family, with calls, input, output
+(reasoning included), cache read and cache write tokens.
 """
 import glob
 import json
@@ -39,7 +38,7 @@ def main():
     elif sys.argv[1:2] == ["usage"] and len(sys.argv) == 5:
         usage(sys.argv[2], int(sys.argv[3]), int(sys.argv[4]))
     else:
-        sys.exit("usage: sdd-cockpit report <repo> [<since> <until>] | usage <repo> <since> <until>")
+        sys.exit("usage: python3 sdd/bin/cockpit report <repo> [<since> <until>] | usage <repo> <since> <until>")
 
 
 def usage(repo, start, end):

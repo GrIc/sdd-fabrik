@@ -1,11 +1,11 @@
 ---
-governs: [cockpit/, test/cockpit]
+governs: [template/sdd/bin/cockpit, test/cockpit]
 ---
 # cockpit
 
-The dev's own view of where their agent tokens go, on their machine, outside the deployed harness. It reads each
-tool's logs, so that supporting a new tool changes nothing in a project's repo nor in what its agents read. The only
-thing it gives away is `usage`, the sums the [ledger](ledger.md) asks for.
+The dev's own view of where their agent tokens go, on their machine. It ships with the harness, and an upgrade
+replaces it without an agent reading its diff, so that supporting a new tool costs agents nothing. The only thing it
+gives away is `usage`, the sums the [ledger](ledger.md) asks for.
 
 - `usage <repo> <since> <until>` sums the tokens spent in a repo over a window by role and model family (`opus` for
   `claude-opus-5-5`), with output including reasoning, for each tool below.

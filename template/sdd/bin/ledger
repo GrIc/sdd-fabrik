@@ -2,9 +2,10 @@
 # SDD-Fabrik token ledger: what agents spent on each module, by month, with no link to a commit or a person.
 # See sdd/WORKFLOW.md.
 #
-# The tokens come from `sdd-cockpit usage <repo> <since> <until>` (epoch seconds), a tool each dev installs on their
-# machine: it prints one tab-separated line per role and model family, with calls, input, output (reasoning
-# included), cache read and cache write tokens. Without it, nothing is noted.
+# The tokens come from `python3 sdd/bin/cockpit usage <repo> <since> <until>` (epoch seconds), which reads the agents'
+# logs on this machine: one tab-separated line per role and model family, with calls, input, output (reasoning
+# included), cache read and cache write tokens. Without Python 3, or with `git config sdd.ledger false`, nothing is
+# noted.
 #
 # The keys are no objects: `git notes --ref sdd-ledger prune` would delete the whole ledger.
 set -eu
@@ -22,14 +23,15 @@ neutral() {
 # Notes the tokens spent since the last commit, split over the modules HEAD changes by their changed lines.
 record() {
   local state since until usage touched month note key
-  command -v sdd-cockpit > /dev/null || return 0
+  # Windows answers python3 with a stub that fails until Python is installed.
+  [ "$(git config --bool sdd.ledger)" != false ] && python3 -c '' > /dev/null 2>&1 || return 0
   state=$(git rev-parse --git-path sdd/ledger-until)
   until=$(git log -1 --format=%ct)
   # Each window starts where the last record ended: an amend counts nothing twice, a failure loses nothing.
   since=$(cat "$state" 2> /dev/null || git log -1 --format=%ct HEAD^ 2> /dev/null || echo 0)
   mkdir -p "$(dirname "$state")"
   echo "$since" > "$state"
-  usage=$(sdd-cockpit usage "$(git rev-parse --show-toplevel)" "$since" "$until")
+  usage=$(python3 "$(dirname "$0")/cockpit" usage "$(git rev-parse --show-toplevel)" "$since" "$until")
   echo "$until" > "$state"
   [ -n "$usage" ] || return 0
   touched=$(bash "$(dirname "$0")/sdd" touched)

@@ -330,6 +330,7 @@ install_hook() {
   install_one commit-msg '[ ! -f sdd/bin/sdd ] || bash sdd/bin/sdd hook "$1" || exit 1' || status=1
   install_one post-commit '[ ! -f sdd/bin/ledger ] || bash sdd/bin/ledger record' || status=1
   install_one pre-push '[ ! -f sdd/bin/ledger ] || bash sdd/bin/ledger sync "$1"' || status=1
+  echo 'The token ledger notes what agents spend on each module, never who: git config sdd.ledger false stops it.'
   return $status
 }
 

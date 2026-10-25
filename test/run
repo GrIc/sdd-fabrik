@@ -120,6 +120,7 @@ test_install_hook_respects_an_existing_hook() {
   fails bash sdd/bin/sdd install-hook
   says 'bash sdd/bin/sdd hook "$1"'
   says "Installed $(git rev-parse --git-path hooks)/pre-push."
+  says 'git config sdd.ledger false stops it.'
   grep -qx '/QUIZ.md' "$(git rev-parse --git-path info/exclude)"
 }
 

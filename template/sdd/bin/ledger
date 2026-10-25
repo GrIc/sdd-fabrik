@@ -66,10 +66,48 @@ sync() {
     echo "NOTE the token ledger did not reach $remote: the next push retries." >&2
 }
 
+# The ledger summed by month, module, role and model; then, per month, the batches noted against the agent commits,
+# to show what it misses.
+report() {
+  local agent
+  git rev-parse -q --verify "$REF" > /dev/null || {
+    echo "No token ledger here. Fetch it: git fetch origin $REF:$REF" >&2
+    exit 1
+  }
+  agent=$(TZ=UTC git log --no-merges -i -E --grep='^Agent-Assisted:[[:space:]]*yes' \
+    --date=format-local:%Y-%m --format=%cd)
+  git ls-tree -r "$REF" | awk '{ print $3 }' | git cat-file --batch | AGENT=$agent awk -F '\t' -v OFS='\t' '
+    / blob [0-9]+$/ { note++; next }
+    $1 == "v1" {
+      key = $2 OFS $3 OFS $4 OFS $5
+      keys[key] = 1
+      for (j = 6; j <= 10; j++) sum[key, j] += $j
+      if (!((note, $2) in counted)) { counted[note, $2] = 1; batches[$2]++ }
+    }
+    END {
+      n = split(ENVIRON["AGENT"], months, "\n")
+      for (i = 1; i <= n; i++) commits[months[i]]++
+      for (m in batches) commits[m] += 0
+      print "month", "module", "role", "model", "calls", "input", "output", "cache_read", "cache_write"
+      # printf: some awks print a large sum in exponent form.
+      for (key in keys) {
+        line = key
+        for (j = 6; j <= 10; j++) line = line OFS sprintf("%.0f", sum[key, j])
+        print line | "sort"
+      }
+      close("sort")
+      print ""
+      print "month", "batches", "agent_commits"
+      for (m in commits) print m, batches[m] + 0, commits[m] | "sort"
+      close("sort")
+    }'
+}
+
 case ${1:-} in
   record) record ;;
   sync) sync "${2:-origin}" ;;
+  report) report ;;
   *)
-    echo 'usage: bash sdd/bin/ledger record | sync [<remote>]' >&2
+    echo 'usage: bash sdd/bin/ledger record | sync [<remote>] | report' >&2
     exit 2 ;;
 esac

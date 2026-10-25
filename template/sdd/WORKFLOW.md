@@ -166,6 +166,8 @@ Optional. `sdd/bin/ledger` keeps what agents spent on each module, by month, in 
 the product's features, with no commit, author or date. The tokens come from `sdd-cockpit`, which each dev installs on
 their machine to see where their own tokens go; without it, nothing is noted. To take part, add
 `bash sdd/bin/ledger record` to `.git/hooks/post-commit` and `bash sdd/bin/ledger sync "$1"` to `.git/hooks/pre-push`.
+To audit a clone, `git fetch origin refs/notes/sdd-ledger:refs/notes/sdd-ledger`, then `bash sdd/bin/ledger report`:
+the tokens by month, module, role and model, then per month the batches noted against the agent commits.
 
 ## Upgrade (for agents)
 

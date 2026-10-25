@@ -17,6 +17,9 @@ people. The details stay on each dev's machine, in `sdd-cockpit`; the repo only 
 - Without `sdd-cockpit`, nothing is noted: [test_record_without_cockpit_notes_nothing](/test/ledger).
 - `sync` merges the remote's ledger into ours and pushes it, so that two devs' notes add up:
   [test_sync_merges_two_devs_ledgers](/test/ledger).
+- `report` sums the ledger by month, module, role and model, then shows per month the batches noted against the
+  agent commits: [test_report_sums_by_month_module_role_and_model_then_shows_coverage](/test/ledger). Without a
+  ledger, it says how to fetch it: [test_report_without_a_ledger_says_how_to_fetch_it](/test/ledger).
 
 Constraints: as [checks](checks.md): bash 3.2 and git with POSIX tools.
 Non-goals: the readers of each agent's logs (they live in `sdd-cockpit`, so a new tool changes nothing here), prices,

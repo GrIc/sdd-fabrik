@@ -32,7 +32,7 @@ batch() {
   seq "$1" >> src/search/a.py
   seq "$2" >> src/import/a.py
   git add -A
-  GIT_COMMITTER_DATE=$3 git commit -qm batch
+  GIT_COMMITTER_DATE=$3 git commit -qm batch -m 'Agent-Assisted: yes'
   bash sdd/bin/ledger record
 }
 
@@ -94,6 +94,29 @@ test_sync_merges_two_devs_ledgers() {
   git fetch -q origin refs/notes/sdd-ledger:refs/remotes/ledger
   fails "$(ledger refs/remotes/ledger | cut -f3-4 | sort | tr '\t' ' ')" 'import reviewer
 search writer'
+}
+
+test_report_sums_by_month_module_role_and_model_then_shows_coverage() {
+  printf 'writer\topus\t4\t40\t400\t4000\t8\n' > "$tmp/usage"
+  batch 3 1 2026-10-23T11:00:00Z
+  printf 'writer\topus\t1\t1\t1\t1\t1\n' > "$tmp/usage"
+  batch 1 0 2026-10-23T12:00:00Z
+  printf 'reviewer\tsonnet\t1\t2\t3\t4\t5\n' > "$tmp/usage"
+  batch 1 0 2026-11-02T10:00:00Z
+  GIT_COMMITTER_DATE=2026-11-02T11:00:00Z git commit -q --allow-empty -m 'Not noted' -m 'Agent-Assisted: yes'
+  fails "$(bash sdd/bin/ledger report | tr '\t' ' ')" 'month module role model calls input output cache_read cache_write
+2026-10 import writer opus 1 10 100 1000 2
+2026-10 search writer opus 4 31 301 3001 7
+2026-11 search reviewer sonnet 1 2 3 4 5
+
+month batches agent_commits
+2026-10 2 2
+2026-11 1 2'
+}
+
+test_report_without_a_ledger_says_how_to_fetch_it() {
+  ! bash sdd/bin/ledger report 2> "$tmp/err"
+  grep -qF 'git fetch origin refs/notes/sdd-ledger:refs/notes/sdd-ledger' "$tmp/err"
 }
 
 names=${*:-$(declare -F | awk '$3 ~ /^test_/ { print $3 }')}

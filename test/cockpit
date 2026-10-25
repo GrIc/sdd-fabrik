@@ -54,6 +54,7 @@ test_claude_code_needs_no_python() {
   reply m1 2026-10-23T10:30:00Z claude-opus-5-5 1 10 100 1000 > "$claude/s1.jsonl"
   fails "$(usage 2> "$tmp/err")" 'writer opus 1 1 10 100 1000'
   [ ! -s "$tmp/err" ]
+  fails "$(bash "$kit/template/sdd/bin/cockpit" hints 2>&1)" ''
 }
 
 test_opencode_child_session_is_the_reviewer() {
@@ -95,6 +96,29 @@ test_report_weighs_roles_and_what_is_sent_along() {
     'skill listing 135 6%'; do
     grep -qF -- "$line" "$tmp/out" || { echo "    output lacks: $line"; sed 's/^/    | /' "$tmp/out"; return 1; }
   done
+}
+
+test_hints_say_what_to_cut_once_a_week() {
+  git init -q "$repo" && cd "$repo"
+  # As Claude Code names the folder: from the real path, which macOS reaches through /private.
+  claude=$CLAUDE_CONFIG_DIR/projects/$(git rev-parse --show-toplevel | sed 's/[^A-Za-z0-9]/-/g')
+  mkdir -p "$claude"
+  now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  block=$(printf '%02000d' 0)
+  {
+    echo '{"attachment":{"type":"mcp_instructions_delta","addedNames":["docs","claude.ai Mail"],'\
+'"addedBlocks":["'"$block"'","'"$block"'"]}}'
+    echo '{"attachment":{"type":"skill_listing","content":"- big:one: '"$block"'\n- used:two: short"}}'
+    calls='{"type":"tool_use","id":"t1","name":"mcp__claude_ai_Mail__send","input":{}},'
+    calls=$calls'{"type":"tool_use","id":"t2","name":"Skill","input":{"skill":"used:two"}}'
+    reply m1 "$now" claude-opus-5-5 0 10 0 100 | sed "s/\"content\":\[\]/\"content\":[$calls]/"
+    reply m2 "$now" claude-opus-5-5 0 10 100 0
+  } > "$claude/s1.jsonl"
+  bash "$kit/template/sdd/bin/cockpit" hints > "$tmp/out"
+  grep -q "^HINT MCP servers never called in this repo's logs, .*: docs\.$" "$tmp/out"
+  grep -q '^HINT The skill listing .*, the largest: big\.$' "$tmp/out"
+  fails "$(wc -l < "$tmp/out" | tr -d ' ')" 2
+  fails "$(bash "$kit/template/sdd/bin/cockpit" hints)" ''
 }
 
 names=${*:-$(declare -F | awk '$3 ~ /^test_/ { print $3 }')}

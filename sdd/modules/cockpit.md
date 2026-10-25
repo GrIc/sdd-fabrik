@@ -20,8 +20,13 @@ gives away is `usage`, the sums the [ledger](ledger.md) asks for.
   with, the longest context and the share of cache reads: all exact. Then, estimated from their size, what is sent along
   with the calls (tool results, skill listing, hooks, MCP instructions, memory files), each written once and read again
   with every later call: [test_report_weighs_roles_and_what_is_sent_along](/test/cockpit).
+- `hints`, with Python 3, prints what the last 7 days show to cut: MCP servers whose instructions are sent but whose
+  tools were never called, plugins never called when the skill listing weighs 5% of the cost or more, anything else
+  sent along at 5% or more, a context over 150k tokens. Each comes back a week later at the earliest; without Python,
+  it says nothing: [test_hints_say_what_to_cut_once_a_week](/test/cockpit),
+  [test_claude_code_needs_no_python](/test/cockpit).
 
 Constraints: `usage` for Claude Code as [checks](checks.md) (bash 3.2, POSIX awk); the rest in one Python 3 file,
 standard library only; tested on Linux and macOS.
 Non-goals: a report for opencode (only its sums for now), tools whose logs we have not read yet (Codex), telling
-apart two batches worked on at the same time, advice (the dev reads the numbers; hints may come once they prove out).
+apart two batches worked on at the same time, changing the dev's setup (the agent asks, the dev decides).

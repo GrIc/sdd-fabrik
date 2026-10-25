@@ -5,6 +5,6 @@ product's features, with no commit, author or date. The hooks `install-hook` wri
 at each push, unless the dev sets `git config sdd.ledger false` (`--global` for every repo). The tokens come from
 `sdd/bin/cockpit`, which reads the agents' logs on this machine: Claude Code's with bash and awk, opencode's with
 Python 3. `bash sdd/bin/cockpit report "$PWD"`, from the repo root and with Python 3, shows a dev where their own
-tokens went. To audit a clone, `git fetch origin refs/notes/sdd-ledger:refs/notes/sdd-ledger`, then
-`bash sdd/bin/ledger report`: the tokens by month, module, role and model, then per month the batches noted against
-the agent commits.
+tokens went; `bash sdd/bin/cockpit hints` says what to cut, once a week at most. To audit a clone,
+`git fetch origin refs/notes/sdd-ledger:refs/notes/sdd-ledger`, then `bash sdd/bin/ledger report`: the tokens by month,
+module, role and model, then per month the batches noted against the agent commits.

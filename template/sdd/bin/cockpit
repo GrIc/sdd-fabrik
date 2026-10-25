@@ -5,7 +5,7 @@
 # `usage <repo> <since> <until>` prints, for sdd/bin/ledger, the tokens spent in <repo> between two epoch seconds: one
 # tab-separated line per role and model family, with calls, input, output (reasoning included), cache read and cache
 # write tokens. Claude Code's logs need only bash and awk, so the ledger counts every dev; opencode's, a SQLite base,
-# and `report` need Python 3 (cockpit.py).
+# `report` and `hints` need Python 3 (cockpit.py).
 set -eu
 
 # Each Claude Code log of repo $1 with its role: the session is the writer, a sub-agent whose description names a
@@ -87,7 +87,12 @@ if [ "${1:-}" = usage ] && [ $# -eq 4 ]; then
 elif [ "${1:-}" = report ]; then
   shift
   exec python3 "$(dirname "$0")/cockpit.py" report "$@"
+elif [ "${1:-}" = hints ] && [ $# -eq 1 ]; then
+  # Hints are advice: without Python, the batch goes on without them.
+  python3 -c '' > /dev/null 2>&1 || exit 0
+  exec python3 "$(dirname "$0")/cockpit.py" hints "$(git rev-parse --show-toplevel)" \
+    "$(git rev-parse --git-path sdd/hints)"
 else
-  echo 'usage: bash sdd/bin/cockpit report <repo> [<since> <until>] | usage <repo> <since> <until>' >&2
+  echo 'usage: bash sdd/bin/cockpit report <repo> [<since> <until>] | hints | usage <repo> <since> <until>' >&2
   exit 2
 fi

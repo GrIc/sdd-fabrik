@@ -192,3 +192,13 @@ uninstall) move to `sdd/guide/`, linked from its top. What a session reads drops
 kit block of `AGENTS.md` lists in three lines what the harness gives an agent, so that it finds the tools without the
 dev. _Rejected:_ Agent Skills (each tool keeps them in its own folder, and their listing is sent with every session,
 as an `AGENTS.md` line is); a `sdd help` command (a call to learn what a line can say).
+
+## 28. The agent puts the cockpit's hints to the dev (2026-10-25)
+
+At each handoff, the agent runs `bash sdd/bin/cockpit hints` and asks the dev about each line, with the change it
+would make. A hint names a cost the logs show and what it buys: on this kit's logs of a week, seven MCP servers whose
+instructions cost 95k tokens and whose tools were never called, a skill listing at 5% of the cost, 95% of it from
+plugins never called here, Bash results at 10%, a context of 238k. A hint shown waits a week before it comes back, so
+that most handoffs read an empty line. _Rejected:_ the agent changing the setup on its own (MCP servers and plugins
+are the dev's, often for other repos); a hint at every batch (the dev stops reading them); hints judged on quality
+(the logs show what is used, not what it is worth).

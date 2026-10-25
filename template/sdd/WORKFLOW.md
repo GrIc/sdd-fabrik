@@ -50,7 +50,9 @@ A file is created when first needed.
    quiz still holds for a fraction of a fresh one.
 7. Hand off: purpose, the decisions you took alone, evidence, limits and a short "understand this" for the human. The
    human reads the diff, answers `QUIZ.md` and commits with `git commit -F .git/sdd/message`. Start the next batch in
-   a fresh session: a long one reads its whole history again with every call.
+   a fresh session: a long one reads its whole history again with every call. Then run `bash sdd/bin/cockpit hints`:
+   it prints a line only when this dev's costs show something new to cut. Put each to the human as a question, with
+   the change you would make (turn off a plugin or an MCP server, fold an output), and make it only on a yes.
 
 Wherever a fresh reviewer is asked for (plan, batch, module), a tool that cannot spawn one does its part itself and
 says so; one that cannot pick a model or resume a sub-agent skips that.

@@ -270,3 +270,13 @@ and two devs reading each other meet the same line. It reads only what git alrea
 _Rejected:_ a count of branches or waiting hours per dev (it would measure people, decision 32); a fetch at each brief
 (slow, and a network call the dev did not ask for); a block until the reviews are done (the human keeps the hand, and
 a dev alone has no one to wait for).
+
+## 35. A harness that proposes its own rules (2026-10-27)
+
+`cockpit hints` reads the quiz journal on the dev's machine: when, over their last 10 batches, a module's answers were
+flagged unclear or not what they wanted twice or more, it says so, and the agent proposes the rule it would write (in
+the contract, the coding style or the quiz instructions). The dev decides, and the rule comes in a batch of its own.
+The harness learns from the people who use it without anyone's answers leaving their machine: only the rule does.
+_Rejected:_ writing the rule without asking (the human keeps the hand); reading the team's quiz lines in the ledger
+(the dev's own flags are what they can act on; the team sees its map with `ledger report`, decision 32); one flag
+(a single unclear question is noise, two point at something).

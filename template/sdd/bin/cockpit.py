@@ -2,8 +2,8 @@
 """The cockpit's Python part, run by sdd/bin/cockpit: the report, and opencode's usage, whose logs are a SQLite base.
 
 `opencode <repo> <since> <until>` prints the tokens opencode spent in <repo> between two epoch seconds, as
-`sdd/bin/cockpit usage` does. Without a window, `report` and `hints <repo> <state>` read the commit times of the dev's
-agent batches on their input, and look at the last 10.
+`sdd/bin/cockpit usage` does. Without a window, `report` and `hints <repo> <state> <quiz journal>` read the commit times
+of the dev's agent batches on their input, and look at the last 10.
 """
 import glob
 import json
@@ -36,8 +36,8 @@ def main():
         end = int(sys.argv[4]) if len(sys.argv) == 5 else int(time.time())
         start = int(sys.argv[3]) if len(sys.argv) == 5 else window(batches())[0]
         report(sys.argv[2], start, end)
-    elif sys.argv[1:2] == ["hints"] and len(sys.argv) == 4:
-        hints(sys.argv[2], sys.argv[3], batches())
+    elif sys.argv[1:2] == ["hints"] and len(sys.argv) == 5:
+        hints(sys.argv[2], sys.argv[3], sys.argv[4], batches())
     elif sys.argv[1:2] == ["opencode"] and len(sys.argv) == 5:
         usage(sys.argv[2], int(sys.argv[3]), int(sys.argv[4]))
     else:
@@ -105,16 +105,35 @@ def window(times):
     return (times[BATCHES] if len(times) > BATCHES else 0), max(min(len(times), BATCHES), 1)
 
 
-def hints(repo, state, times):
-    """What the last batches show to cut, for the agent to put to the dev as a question. Silent before the first batch
-    and when nothing is new: a hint shown comes back BATCHES batches later at the earliest."""
+def hints(repo, state, journal, times):
+    """What the last batches show to cut or to write down, for the agent to put to the dev as a question. Silent before
+    the first batch and when nothing is new: a hint shown comes back BATCHES batches later at the earliest."""
     if not times:
         return
     start, count = window(times)
-    seen = measure(repo, start, int(time.time()))
-    if not seen.total:
-        return
+    found = cuts(measure(repo, start, int(time.time())), count)
+    for module, flags in sorted(flagged(journal, start).items()):
+        if flags >= 2:
+            found["quiz " + module] = (f"Quiz answers in {module} were flagged unclear or not what you wanted {flags}"
+                                       f" times: propose the rule you would write.")
+    shown = {}
+    if os.path.exists(state):
+        with open(state) as file:
+            shown = {key: int(batch) for key, batch in (line.rstrip("\n").split("\t") for line in file)}
+    for key, text in found.items():
+        if len(times) - shown.get(key, -BATCHES) >= BATCHES:
+            print("HINT " + text)
+            shown[key] = len(times)
+    os.makedirs(os.path.dirname(state) or ".", exist_ok=True)
+    with open(state, "w") as file:
+        file.writelines(f"{key}\t{batch}\n" for key, batch in shown.items())
+
+
+def cuts(seen, count):
+    """What the logs show to cut, by kind."""
     found = {}
+    if not seen.total:
+        return found
     servers = [source[len("MCP instructions "):] for source in seen.sources if source.startswith("MCP instructions ")]
     # Claude Code names a server's tools mcp__<server>__<tool>, its name's other signs turned to "_".
     unused = [server for server in servers if not any(
@@ -137,17 +156,21 @@ def hints(repo, state, times):
     if seen.longest[0] > LONG:
         found["context"] = (f"A log reached {short(seen.longest[0])} tokens of context, read again with each call: a"
                             f" fresh session per batch reads less.")
-    shown = {}
-    if os.path.exists(state):
-        with open(state) as file:
-            shown = {key: int(batch) for key, batch in (line.rstrip("\n").split("\t") for line in file)}
-    for key, text in found.items():
-        if len(times) - shown.get(key, -BATCHES) >= BATCHES:
-            print("HINT " + text)
-            shown[key] = len(times)
-    os.makedirs(os.path.dirname(state) or ".", exist_ok=True)
-    with open(state, "w") as file:
-        file.writelines(f"{key}\t{batch}\n" for key, batch in shown.items())
+    return found
+
+
+def flagged(journal, start):
+    """Per module, the quiz answers flagged unclear or not wanted since start, once per title and cause: a flag kept
+    from a try to the next is one flag."""
+    flags = set()
+    if os.path.exists(journal):
+        with open(journal) as file:
+            for line in file:
+                fields = line.rstrip("\n").split("\t")
+                if fields[0] == "v1" and int(fields[1]) > start:
+                    flags.update((module, fields[8], cause) for module in fields[4].split(",") if module != "-"
+                                 for cause in fields[7].split(",") if cause in ("unclear", "not-wanted"))
+    return Counter(module for module, _, _ in flags)
 
 
 def trace(path, start, end, seen):

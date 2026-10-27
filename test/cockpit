@@ -138,6 +138,33 @@ test_hints_say_what_to_cut_once_in_ten_batches() {
   fails "$(hints | wc -l | tr -d ' ')" 2
 }
 
+test_hints_name_a_module_whose_quiz_is_flagged_twice() {
+  git init -q "$repo" && cd "$repo"
+  git config user.email dev@example.test && git config user.name Dev
+  for i in 1 2 3 4 5 6 7 8 9 10 11; do batch "@$(($(date +%s) - 86400 + i)) +0000"; done
+  mkdir -p .git/sdd
+  # Quiz journal lines: v1, time, try or pass, fingerprint, modules, question, tries, causes, title, free text.
+  journal() { printf 'v1\t%s\t%s\tfp\t%s\t1\t1\t%s\t%s\t-\n' "$(($(date +%s) - $1))" "$2" "$3" "$4" "$5"; }
+  {
+    # Before the last ten batches.
+    journal 172800 pass search unclear Old
+    # A flag kept from a try to the pass counts once.
+    journal 3600 try search unclear One
+    journal 3500 pass search unclear One
+    journal 3600 pass search,import not-wanted Two
+    journal 3600 pass search unclear,not-wanted Three
+    journal 3600 pass import not-understood Four
+    journal 3600 pass import unclear Five
+    # A batch that touched no module.
+    journal 3600 pass - unclear,not-wanted Six
+  } > .git/sdd/quiz-journal
+  hints() { bash "$kit/template/sdd/bin/cockpit" hints; }
+  text='were flagged unclear or not what you wanted'
+  fails "$(hints)" "HINT Quiz answers in import $text 2 times: propose the rule you would write.
+HINT Quiz answers in search $text 4 times: propose the rule you would write."
+  fails "$(hints)" ''
+}
+
 names=${*:-$(declare -F | awk '$3 ~ /^test_/ { print $3 }')}
 failed=0
 for t in $names; do

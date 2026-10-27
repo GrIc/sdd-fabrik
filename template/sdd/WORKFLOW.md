@@ -58,8 +58,9 @@ A file is created when first needed.
    high risk the advice to have a second human read the diff. The human reads the diff, answers `QUIZ.md` and commits
    with `git commit -F .git/sdd/message`. Start the next batch in a fresh session: a long one reads its whole history
    again with every call. Then run `bash sdd/bin/cockpit hints`: it prints a line only when this dev's costs show
-   something new to cut. Put each to the human as a question, with the change you would make (turn off a plugin or an
-   MCP server, fold an output), and make it only on a yes.
+   something new to cut, or their quiz answers in a module were flagged twice. Put each to the human as a question,
+   with the change you would make (turn off a plugin or an MCP server, fold an output, write a rule in the contract, the
+   coding style or the quiz instructions), and make it only on a yes, in a batch of its own.
 
 Wherever a fresh reviewer is asked for (plan, batch, module), a tool that cannot spawn one does its part itself and
 says so; one that cannot pick a model or resume a sub-agent skips that.

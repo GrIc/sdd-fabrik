@@ -105,7 +105,7 @@ elif [ "${1:-}" = hints ] && [ $# -eq 1 ]; then
   # Hints are advice: without Python, the batch goes on without them.
   python3 -c '' > /dev/null 2>&1 || exit 0
   batches . | exec python3 "$(dirname "$0")/cockpit.py" hints "$(git rev-parse --show-toplevel)" \
-    "$(git rev-parse --git-path sdd/hints)"
+    "$(git rev-parse --git-path sdd/hints)" "$(git rev-parse --git-common-dir)/sdd/quiz-journal"
 else
   echo 'usage: bash sdd/bin/cockpit report <repo> [<since> <until>] | hints | usage <repo> <since> <until>' >&2
   exit 2

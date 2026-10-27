@@ -26,6 +26,9 @@ gives away is `usage`, the sums the [ledger](ledger.md) asks for.
   days, so that a slow dev and a busy one get the same advice; a teammate's batch is not the dev's. Each hint
   comes back 10 batches later at the earliest; before the first batch or without Python, it says nothing:
   [test_hints_say_what_to_cut_once_in_ten_batches](/test/cockpit), [test_claude_code_needs_no_python](/test/cockpit).
+  Over the same batches, it reads the quiz journal and names a module whose answers were flagged unclear or not what
+  the dev wanted twice or more, counted once per question title and cause:
+  [test_hints_name_a_module_whose_quiz_is_flagged_twice](/test/cockpit).
 
 Constraints: `usage` for Claude Code as [checks](checks.md) (bash 3.2, POSIX awk); the rest in one Python 3 file,
 standard library only; tested on Linux and macOS.

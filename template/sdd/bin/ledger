@@ -83,9 +83,9 @@ sync() {
 }
 
 # The ledger summed by month, module, role and model; then, per month, the batches noted against the agent commits,
-# to show what it misses.
+# to show what it misses; then the quizzes by month and module, and how many devs passed one in each module.
 report() {
-  local emails agent
+  local emails agent authors
   git rev-parse -q --verify "$REF" > /dev/null || {
     echo "No token ledger here. Fetch it: git fetch origin $REF:$REF" >&2
     exit 1
@@ -94,8 +94,21 @@ report() {
   emails=$(sed -n "s/^AGENT_EMAILS='\(.*\)'$/\1/p" "$(dirname "$0")/sdd")
   agent=$(TZ=UTC git log --no-merges -i -E --grep='^Agent-Assisted:[[:space:]]*yes[[:space:]]*$' \
     --grep="^Co-Authored-By:.*<($emails)>" --date=format-local:%Y-%m --format=%cd)
-  git ls-tree -r "$REF" | awk '{ print $3 }' | git cat-file --batch | AGENT=$agent awk -F '\t' -v OFS='\t' '
-    / blob [0-9]+$/ { note++; next }
+  # A number per module, never a name.
+  authors=$(git log --no-merges -E --grep='^Quiz: [0-9]+/[0-9]+$' --format='%H %aE' | while read -r commit email; do
+    bash "$(dirname "$0")/sdd" touched "$commit" | EMAIL=$email awk '{ print $1 "\t" tolower(ENVIRON["EMAIL"]) }'
+  done | sort -u | awk -F '\t' -v OFS='\t' '{ n[$1]++ } END { for (m in n) print m, n[m] }')
+  git ls-tree -r "$REF" | awk '{ print $3 }' | git cat-file --batch |
+    AGENT=$agent AUTHORS=$authors awk -F '\t' -v OFS='\t' '
+    /^[0-9a-f]+ blob [0-9]+$/ { note++; next }
+    $1 == "q1" {
+      key = $2 OFS $3
+      asked[key]++
+      quizzes++
+      first[key] += $4 == 1
+      unclear[key] += $5 ~ /unclear/
+      unwanted[key] += $5 ~ /not-wanted/
+    }
     $1 == "v1" {
       key = $2 OFS $3 OFS $4 OFS $5
       keys[key] = 1
@@ -118,14 +131,41 @@ report() {
       print "month", "batches", "agent_commits"
       for (m in commits) print m, batches[m] + 0, commits[m] | "sort"
       close("sort")
+      if (quizzes) {
+        print ""
+        print "month", "module", "questions", "first_try", "unclear", "not_wanted"
+        for (key in asked) print key, asked[key], first[key], unclear[key], unwanted[key] | "sort"
+        close("sort")
+      }
+      if (ENVIRON["AUTHORS"] != "") {
+        print ""
+        print "module", "quiz_authors"
+        print ENVIRON["AUTHORS"] | "sort"
+        close("sort")
+      }
     }'
+}
+
+# Module $1's questions flagged unclear or commented by the dev, over the last three months, one per line: month,
+# causes, title, words. The reviewer reads them before writing a quiz.
+quiz() {
+  local module=$1
+  git rev-parse -q --verify "$REF" > /dev/null || return 0
+  git ls-tree -r "$REF" | awk '{ print $3 }' | git cat-file --batch |
+    awk -F '\t' -v OFS='\t' -v module="$module" -v now="$(date -u +%Y-%m)" '
+      BEGIN { split(now, d, "-"); since = d[1] * 12 + d[2] - 2 }
+      $1 == "q1" && $3 == module && ($5 ~ /unclear/ || $7 != "-") {
+        split($2, d, "-")
+        if (d[1] * 12 + d[2] >= since) print $2, $5, $6, $7
+      }' | sort
 }
 
 case ${1:-} in
   record) record ;;
   sync) sync "${2:-origin}" ;;
   report) report ;;
+  quiz) quiz "${2:?usage: bash sdd/bin/ledger quiz <module>}" ;;
   *)
-    echo 'usage: bash sdd/bin/ledger record | sync [<remote>] | report' >&2
+    echo 'usage: bash sdd/bin/ledger record | sync [<remote>] | report | quiz <module>' >&2
     exit 2 ;;
 esac

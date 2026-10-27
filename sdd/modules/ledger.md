@@ -30,6 +30,13 @@ with `git config sdd.ledger false`, nothing is noted, and the ledger never stops
   agent commits, marked as the hook marks them:
   [test_report_sums_by_month_module_role_and_model_then_shows_coverage](/test/ledger). Without a ledger, it says how
   to fetch it: [test_report_without_a_ledger_says_how_to_fetch_it](/test/ledger).
+- `report` then shows the quizzes by month and module (questions, right at the first try, flagged unclear, flagged not
+  what the dev wanted), and per module how many devs committed a passed quiz there, a number and never a name:
+  [test_report_shows_the_quiz_by_month_and_module](/test/ledger),
+  [test_report_counts_who_passed_a_quiz_per_module](/test/ledger).
+- `quiz <module>` lists the module's questions of the last three months that were flagged unclear or commented, one
+  per line, for the reviewer to read before writing a quiz:
+  [test_quiz_lists_a_module_s_unclear_questions](/test/ledger).
 
 Constraints: as [checks](checks.md): bash 3.2 and git with POSIX tools, LF line ends even on a Windows checkout:
 [test_ledger_survives_a_crlf_checkout](/test/ledger).

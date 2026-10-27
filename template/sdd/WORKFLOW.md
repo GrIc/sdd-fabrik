@@ -44,7 +44,8 @@ A file is created when first needed.
 5. Stage the batch, write the proposed message with `Agent-Assisted: yes` to `.git/sdd/message`, and run
    `bash sdd/bin/sdd audit --message .git/sdd/message`.
 6. Review: spawn a fresh reviewer, a new context that did not write the batch. It reads the staged diff, the contract
-   and the coding style, reports findings with their evidence, and writes the quiz once the findings are fixed. It
+   and the coding style, and reports findings with their evidence. Once they are fixed, it runs
+   `bash sdd/bin/ledger quiz <module>`, which lists the module's questions devs found unclear, and writes the quiz. It
    then runs the audit of step 5 again, which checks the quiz. Give it a smaller model than the writer's unless the
    batch is large or touches security or data. After a fix, send the same reviewer the change: it checks that its
    quiz still holds for a fraction of a fresh one.

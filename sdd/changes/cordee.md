@@ -18,16 +18,6 @@ Formats the batches share:
 - Ledger quiz lines, in the same note as the tokens: `q1, <month>, <module>, <tries>, <causes>, <title>, <free text>`,
   tab-separated, one per question and module of the batch. `report` reads `v1` lines as today and ignores the others.
 
-## The map of understanding (ledger)
-
-- `report` adds a section by month and module: questions, right at the first try, flagged unclear, flagged not what I
-  wanted: `test_report_shows_the_quiz_by_month_and_module`.
-- Then per module, how many distinct authors committed a `Quiz:` trailer touching it (through `sdd touched`): a
-  number, never a name: `test_report_counts_who_passed_a_quiz_per_module`.
-- `ledger quiz <module>` prints that module's questions flagged unclear and the free texts, of the last three months,
-  one line each: `test_quiz_lists_a_module_s_unclear_questions`. WORKFLOW step 6: the reviewer runs it before writing
-  a quiz. `guide/tokens.md` says what the new section shows.
-
 ## Belay: a dev's first batch in a module (checks)
 
 - `sdd brief <module>` prints "First batch of yours in <module>." when the clone's `user.email` authored no commit

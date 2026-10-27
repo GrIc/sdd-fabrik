@@ -239,3 +239,14 @@ human a recommendation, so that a dev alone can use the whole harness.
 _Rejected:_ a required `Reviewed-by:` trailer at high risk (a dev alone could not commit); levels the dev declares for
 themself (the risk belongs to the module, not to the person); a level guessed from the code (a rule the human cannot
 read in the contract); a quiz on every Markdown change (questions on prose ask little).
+
+## 32. A map of understanding by module, never by person (2026-10-27)
+
+`ledger report` shows, per month and module, how many quiz questions were right at the first try and how many were
+flagged unclear or not what the dev wanted, and per module how many devs passed a quiz there. A low first-try rate
+points to a module hard to read, or to quizzes badly asked: `ledger quiz <module>` gives the reviewer the questions
+devs found unclear before it writes the next one. A module only one dev understands is a risk the team can see without
+anyone being named.
+_Rejected:_ the rate per dev (it measures the module and the question as much as the dev, decision 29, and names
+them); the authors' names per module (the count tells who to train or pair, `git log` already tells who); a score per
+module (one number would hide whether the code or the quiz is at fault).

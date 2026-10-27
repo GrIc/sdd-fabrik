@@ -10,5 +10,8 @@ tokens went; `bash sdd/bin/cockpit hints` says what to cut, once in 10 batches a
 module, role and model, then per month the batches noted against the agent commits.
 
 The same notes keep each quiz passed, one tab-separated line per question and module: `q1`, the month, the module, the
-tries, the boxes ticked, the question's title and the dev's own words, as in the
-[quiz journal](../WORKFLOW.md#quiz). They are pushed with the tokens: the dev's words reach the team, never their name.
+tries, the boxes ticked, the question's title and the dev's own words, as in the [quiz journal](../WORKFLOW.md#quiz).
+They are pushed with the tokens: the dev's words reach the team, never their name. `report` then shows them by month and
+module: the questions, those right at the first try, those flagged unclear or not what the dev wanted. A module where
+few are right at the first try is hard to understand, in its code or in its quizzes. Last, per module, how many devs
+passed a quiz there: one alone means nobody else could take over.

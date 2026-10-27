@@ -18,13 +18,6 @@ Formats the batches share:
 - Ledger quiz lines, in the same note as the tokens: `q1, <month>, <module>, <tries>, <causes>, <title>, <free text>`,
   tab-separated, one per question and module of the batch. `report` reads `v1` lines as today and ignores the others.
 
-## Quiz answers in the ledger (ledger)
-
-- `record` adds to the batch's note one `q1` line per `pass` line of the journal in its window, for each module of that
-  line, with the commit's month: `test_record_adds_the_batch_quiz_to_its_note`. A batch with a quiz and no tokens
-  still gets its note: `test_a_quiz_without_tokens_is_noted`.
-- With `sdd.ledger false`, no quiz line is noted either: `test_a_dev_who_turns_it_off_notes_nothing` (extended).
-
 ## The map of understanding (ledger)
 
 - `report` adds a section by month and module: questions, right at the first try, flagged unclear, flagged not what I

@@ -104,6 +104,7 @@ only and shared by the clone's worktrees: tab-separated, `v1`, the time in epoch
 fingerprint, its modules (joined by `,`, or `-`), the question's number, the tries so far (this one included), the boxes
 ticked (`not-understood`, `unclear`, `not-wanted`, joined by `,`, or `-`), the question's title and the dev's own words
 (or `-`).
+At each commit, the [token ledger](guide/tokens.md) notes the quiz passed, without the batch or the dev.
 
 ## Contracts
 

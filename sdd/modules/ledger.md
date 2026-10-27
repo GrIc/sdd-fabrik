@@ -3,14 +3,20 @@ governs: [template/sdd/bin/ledger, test/ledger]
 ---
 # ledger
 
-What agents spent on each module, by month, so that a team weighs the cost of its product's features, never of its
-people. The details stay on each dev's machine, in the [cockpit](cockpit.md); the repo only keeps the sums. On by
-default; with `git config sdd.ledger false`, nothing is noted, and the ledger never stops a commit or a push.
+What agents spent on each module, by month, and the quizzes passed there, so that a team weighs the cost of its
+product's features and sees where they are hard to understand, never its people. The details stay on each dev's
+machine, in the [cockpit](cockpit.md); the repo only keeps the sums and the quizzes without a name. On by default;
+with `git config sdd.ledger false`, nothing is noted, and the ledger never stops a commit or a push.
 
 - `record` splits the tokens spent since the last commit over the modules HEAD changes, by their changed lines, into
   a note of the git notes `sdd-ledger` that hangs on a random key, written by `sdd-fabrik` on the first of the month:
   [test_record_splits_a_batch_by_module_on_no_commit](/test/ledger). A batch outside the modules goes to `-`:
   [test_a_batch_outside_the_modules_goes_to_a_dash](/test/ledger).
+- The same note takes the quiz HEAD passed, from the [quiz journal](checks.md): one line per question and module, with
+  the tries, the causes ticked, the title and the dev's words, never the batch or who passed it. The journal's lines
+  are matched by HEAD's fingerprint, since worktrees share the journal. A batch with a quiz and no tokens still gets
+  its note: [test_record_adds_the_batch_quiz_to_its_note](/test/ledger),
+  [test_a_quiz_without_tokens_is_noted](/test/ledger).
 - Each window starts where the last record ended, so that an amend counts nothing twice and a failed cockpit loses
   nothing:
   [test_an_amend_counts_from_the_last_record](/test/ledger), [test_a_failed_cockpit_loses_no_window](/test/ledger).

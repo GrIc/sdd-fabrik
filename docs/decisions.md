@@ -227,3 +227,14 @@ the file answers it, and the agent spends nothing until the dev asks.
 _Rejected:_ the merge request as the channel for feedback (it names its author); sending the agent the feedback at each
 failure (tokens on every wrong answer, and the dev did not ask); a slash command (tied to one tool); a global switch for
 learning (the journal stays local, the ledger already has `sdd.ledger false`).
+
+## 31. The quiz follows the risk (2026-10-27)
+
+The quiz weighs what a mistake costs. A contract may declare `risk: high`: a batch changing that module asks five
+questions, and the handoff and `audit` recommend a second human's reading. A batch of prose outside the contracts asks
+none: the human reads its diff, and a quiz on prose teaches little. Everything else asks three, as before. The OWF notes
+(October 2026) ask for a demanding quiz and two humans on API contracts, security and data; the owner kept the second
+human a recommendation, so that a dev alone can use the whole harness.
+_Rejected:_ a required `Reviewed-by:` trailer at high risk (a dev alone could not commit); levels the dev declares for
+themself (the risk belongs to the module, not to the person); a level guessed from the code (a rule the human cannot
+read in the contract); a quiz on every Markdown change (questions on prose ask little).

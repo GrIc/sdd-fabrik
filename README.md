@@ -44,7 +44,8 @@ To upgrade or uninstall, follow `sdd/guide/upgrade.md` in the deployed repositor
 1. For work of several batches, the agent first writes a plan the human validates: `sdd/changes/<slug>.md`.
 2. The agent builds the smallest coherent change, updates its module contract or says why it stays, and runs the
    checks.
-3. A fresh reviewer, a new agent context, reads the staged diff and writes `QUIZ.md`: three questions on the change.
+3. A fresh reviewer, a new agent context, reads the staged diff and writes `QUIZ.md`: three questions on the change,
+   five when a module at high risk changes.
 4. The human reads the diff, ticks the answers, and commits, from a terminal or an IDE.
 5. For an agent-assisted commit, the `commit-msg` hook checks that each contract moved with its code, that the batch
    is small, and that the quiz is right. For the human's own commits, it only warns.

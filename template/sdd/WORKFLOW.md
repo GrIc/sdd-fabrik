@@ -48,20 +48,26 @@ A file is created when first needed.
    then runs the audit of step 5 again, which checks the quiz. Give it a smaller model than the writer's unless the
    batch is large or touches security or data. After a fix, send the same reviewer the change: it checks that its
    quiz still holds for a fraction of a fresh one.
-7. Hand off: purpose, the decisions you took alone, evidence, limits and a short "understand this" for the human. The
-   human reads the diff, answers `QUIZ.md` and commits with `git commit -F .git/sdd/message`. Start the next batch in
-   a fresh session: a long one reads its whole history again with every call. Then run `bash sdd/bin/cockpit hints`:
-   it prints a line only when this dev's costs show something new to cut. Put each to the human as a question, with
-   the change you would make (turn off a plugin or an MCP server, fold an output), and make it only on a yes.
+7. Hand off: purpose, the decisions you took alone, evidence, limits and a short "understand this" for the human, and at
+   high risk the advice to have a second human read the diff. The human reads the diff, answers `QUIZ.md` and commits
+   with `git commit -F .git/sdd/message`. Start the next batch in a fresh session: a long one reads its whole history
+   again with every call. Then run `bash sdd/bin/cockpit hints`: it prints a line only when this dev's costs show
+   something new to cut. Put each to the human as a question, with the change you would make (turn off a plugin or an
+   MCP server, fold an output), and make it only on a yes.
 
 Wherever a fresh reviewer is asked for (plan, batch, module), a tool that cannot spawn one does its part itself and
 says so; one that cannot pick a model or resume a sub-agent skips that.
 
 ## Quiz
 
+How many questions depends on the risk. A batch whose changed files are all Markdown outside `sdd/modules/` needs no
+quiz (one written is still graded). A batch that changes a module declaring `risk: high` (an API contract, security,
+personal data, money) needs five, and the handoff recommends a second human's reading; nothing requires one, so a dev
+alone uses the whole harness. Any other batch needs three.
+
 `bash sdd/bin/sdd fingerprint` prints the batch fingerprint and the two paths to write. The reviewer writes:
 
-- `QUIZ.md` at the repo root (kept out of git): three questions that make the human predict, not recognize. What does
+- `QUIZ.md` at the repo root (kept out of git): questions that make the human predict, not recognize. What does
   this return for that input, which line enforces this rule, what breaks if this line goes, why this option over that
   one. Each question cites a changed `file:line` and has 2 to 4 boxes; the right box changes place.
 
@@ -88,16 +94,16 @@ says so; one that cannot pick a model or resume a sub-agent skips that.
   A "30" after hours counts as minutes.
   ```
 
-The commit fails until all three boxes are right. Under each wrong question, the hook writes a quoted block in
+The commit fails until every answer is right. Under each wrong question, the hook writes a quoted block in
 `QUIZ.md`: the tries, the hint, and optional boxes for the dev to say why (not understood, question unclear, the code
 does not do what they wanted). The boxes never change the grade. If the batch changed since the quiz was written, the
 hook only warns: ask for a new quiz when the changes touch what it asks.
 
-Each graded try appends one line per question to `$(git rev-parse --git-common-dir)/sdd/quiz-journal`, on this
-machine only and shared by the clone's worktrees: tab-separated, `v1`, the time in epoch seconds, `try` or `pass`, the
-batch fingerprint, its modules (joined by `,`, or `-`), the question's number, the tries until right, the boxes ticked
-(`not-understood`, `unclear`, `not-wanted`, joined by `,`, or `-`), the question's title and the dev's own words (or
-`-`).
+Each graded try appends one line per question to `$(git rev-parse --git-common-dir)/sdd/quiz-journal`, on this machine
+only and shared by the clone's worktrees: tab-separated, `v1`, the time in epoch seconds, `try` or `pass`, the batch
+fingerprint, its modules (joined by `,`, or `-`), the question's number, the tries so far (this one included), the boxes
+ticked (`not-understood`, `unclear`, `not-wanted`, joined by `,`, or `-`), the question's title and the dev's own words
+(or `-`).
 
 ## Contracts
 
@@ -105,6 +111,7 @@ batch fingerprint, its modules (joined by `,`, or `-`), the question's number, t
 ---
 governs: [src/search.py, src/templates/search/, tests/test_search.py]
 depends: [tags]
+risk: high
 ---
 # search
 
@@ -119,7 +126,8 @@ At most 50 lines. Intent, never facts that a refactor keeping the behavior would
 JSON formats). A criterion is a plain sentence, then links to the tests that prove it: a test name, a group, or the
 whole file with its name or path as the link text, relative to the contract or from the repo root. Several criteria
 may share a test; a criterion without a link is checked by hand, as its sentence says. No checkboxes, no status.
-`depends` names the modules this one builds on; check their tests pass before you do.
+`depends` names the modules this one builds on; check their tests pass before you do. `risk: high`, for a module where
+a mistake costs much (an API contract, security, personal data, money), asks for a stricter quiz.
 
 ## Decisions
 
@@ -134,7 +142,7 @@ keeps its text.
 | `Agent-Assisted: yes` | the agent, in its proposed message | drift and size block, the quiz is required |
 | `Spec-Unchanged(<module>): <reason>` | the author | spares that module from the drift check and the one-module limit |
 | `Large-Batch: <reason>` | the human | lifts the size limits (`MAX_LINES` in `sdd/bin/sdd`, one module) |
-| `Quiz: 3/3` | the hook | records the passed quiz |
+| `Quiz: 3/3` | the hook | records the passed quiz and its number of questions |
 
 A co-author address listed in `AGENT_EMAILS` (top of `sdd/bin/sdd`) counts as `Agent-Assisted: yes`; any other commit
 is the human's own. The script prints ERROR when every commit must stop; DRIFT (code against its contract, or a

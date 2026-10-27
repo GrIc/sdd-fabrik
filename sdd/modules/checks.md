@@ -21,10 +21,13 @@ check can be bypassed.
   still notes what it lifts. Up to 5% over only gets a note:
   [test_over_max_lines_blocks_an_agent_warns_a_human](/test/run), [test_up_to_five_percent_over_only_notes](/test/run),
   [test_two_modules_block_an_agent](/test/run), [test_large_batch_lifts_both_limits](/test/run).
-- Quiz: three questions on the staged batch in `QUIZ.md`, graded offline against a key:
-  [test_quiz_passed_adds_the_trailer_and_cleans_up](/test/run),
-  [test_wrong_answer_explains_then_a_retry_passes](/test/run). A wrong answer prints one line, and writes under its
-  question a quoted block the parser skips: the tries, the key's hint, from the second try a call to type *quiz
+- Quiz: three questions, five when the batch changes a module declaring `risk: high`, none when every changed file is
+  Markdown outside `sdd/modules/` (one written is still graded), on the staged batch in `QUIZ.md`, graded offline
+  against a key: [test_quiz_passed_adds_the_trailer_and_cleans_up](/test/run),
+  [test_wrong_answer_explains_then_a_retry_passes](/test/run), [test_a_high_risk_module_asks_five_questions](/test/run),
+  [test_a_markdown_only_batch_needs_no_quiz](/test/run). The trailer records the count, `Quiz: 5/5`, and `audit`
+  recommends a second human's reading at high risk, never requires it. A wrong answer prints one line, and writes under
+  its question a quoted block the parser skips: the tries, the key's hint, from the second try a call to type *quiz
   feedback* to the agent, and optional boxes to say why. A new try keeps what the dev ticked and wrote; the boxes never
   change the grade: [test_a_wrong_answer_writes_a_hint_block_in_the_quiz](/test/run),
   [test_a_new_try_keeps_the_feedback_ticked](/test/run), [test_feedback_never_changes_the_grade](/test/run). Each graded

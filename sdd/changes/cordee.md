@@ -18,17 +18,6 @@ Formats the batches share:
 - Ledger quiz lines, in the same note as the tokens: `q1, <month>, <module>, <tries>, <causes>, <title>, <free text>`,
   tab-separated, one per question and module of the batch. `report` reads `v1` lines as today and ignores the others.
 
-## Quiz by risk (checks)
-
-- A contract may declare `risk: high` in its front matter. A batch that changes the governed paths or contract of such
-  a module needs five questions, and `audit` notes that a second human's reading is recommended. Otherwise three:
-  `test_a_high_risk_module_asks_five_questions`.
-- A batch whose changed files are all Markdown outside `sdd/modules/` needs no quiz; a `QUIZ.md` present is still
-  graded: `test_a_markdown_only_batch_needs_no_quiz`.
-- The trailer records the count: `Quiz: 3/3` or `Quiz: 5/5`. Existing quiz tests keep passing.
-- WORKFLOW: `risk: high` in the contract format, the levels in the quiz section, the second reader as a recommendation
-  in the handoff (step 7). A dev alone uses the whole harness.
-
 ## Quiz answers in the ledger (ledger)
 
 - `record` adds to the batch's note one `q1` line per `pass` line of the journal in its window, for each module of that

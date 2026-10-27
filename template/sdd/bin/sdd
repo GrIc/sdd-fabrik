@@ -207,7 +207,7 @@ feedback() {
       for (last = lines; last > 0 && (buf[last] == "" || buf[last] ~ /^>/); last--) ;
       for (i = 1; i <= last; i++) print buf[i]
       print ""
-      printf "> Wrong, %d %s.%s\n", tries, tries == 1 ? "try" : "tries", hint[q] == "" ? "" : " Hint: " hint[q]
+      printf "> Wrong, %d %s.%s\n", tries, (tries == 1 ? "try" : "tries"), (hint[q] == "" ? "" : " Hint: " hint[q])
       if (tries > 1) printf "> %d tries on this question: type *quiz feedback* to your agent to clear it up.\n", tries
       print ">"
       print "> Optional, why? (shared without your name)"
@@ -237,7 +237,7 @@ journal() {
       gsub(/\t/, " ", title)
       gsub(/\t/, " ", other)
       printf "v1\t%s\t%s\t%s\t%s\t%d\t%d\t%s\t%s\t%s\n", now, kind, fp, modules, q,
-        wrong + (substr(grades, q, 1) == "R"), causes == "" ? "-" : causes, title, other == "" ? "-" : other
+        wrong + (substr(grades, q, 1) == "R"), (causes == "" ? "-" : causes), title, (other == "" ? "-" : other)
     }
     /^## / { out(); q++; title = $0; sub(/^## ([0-9]+\. )?/, "", title); wrong = 0; causes = other = ""; next }
     /^> Wrong, [0-9]+ tr/ { split($0, w, " "); wrong = w[3] }

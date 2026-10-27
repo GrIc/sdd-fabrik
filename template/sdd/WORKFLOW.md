@@ -33,10 +33,11 @@ A file is created when first needed.
 
 1. Read the intent, the contract, its tests and the code. Ask the open intent questions. When behavior depends on real
    input, measure it with a throwaway script first, and stop at the approach that covers 95 to 98% of real cases.
-   Run `bash sdd/bin/sdd brief <module>`. When it says this is the dev's first batch there, offer a discovery mode and
-   apply it only on a yes: sum up the contract and its decisions, ask the dev how they would go about it, keep the
-   batch small, tell the reviewer so that its quiz asks why rather than which line, and suggest pairing with one of
-   the devs it names.
+   Run `bash sdd/bin/sdd brief <module>`. When it shows what waits, a quiz in another worktree or a branch waiting for
+   a review, propose to finish that before producing more. When it says this is the dev's first batch there, offer a
+   discovery mode and apply it only on a yes: sum up the contract and its decisions, ask the dev how they would go
+   about it, keep the batch small, tell the reviewer so that its quiz asks why rather than which line, and suggest
+   pairing with one of the devs it names.
 2. Build the smallest coherent change, with the tests it deserves ([coding style](coding-style.md#tests)). Run the
    project's checks. Never cut a user text, a test or a name to fit the size limit: split the batch, or ask the human
    for `Large-Batch`.

@@ -248,6 +248,64 @@ test_brief_is_silent_in_a_known_module() {
   [ ! -s "$out" ]
 }
 
+test_brief_shows_quizzes_waiting_in_other_worktrees() {
+  git worktree add -q "$tmp/other" -b other
+  git worktree add -q "$tmp/third" -b third
+  succeeds bash sdd/bin/sdd brief
+  [ ! -s "$out" ]
+  # The dev's own quiz, in the worktree they run brief from, does not wait.
+  touch "$tmp/other/QUIZ.md" QUIZ.md
+  succeeds bash sdd/bin/sdd brief
+  [ "$(wc -l < "$out")" -eq 1 ] && says 'A quiz waits for your answers in ' && says '/other.'
+}
+
+# Pushes branch $1 with a commit by $2, committed $3 hours ago.
+push_branch() {
+  git checkout -q -b "$1" main
+  GIT_COMMITTER_DATE="$(($(date +%s) - $3 * 3600 - 60)) +0000" commit_as search "$2"
+  git push -q origin "$1"
+  git checkout -q main
+}
+
+# A remote with origin/HEAD on main, which holds a commit by Bob Roy pushed again as branch done.
+remote() {
+  git init -q --bare "$tmp/origin.git"
+  git remote add origin "$tmp/origin.git"
+  commit_as search 'Bob Roy'
+  git push -q origin main main:done
+}
+
+test_brief_shows_branches_waiting_for_review_with_their_author() {
+  remote
+  # Names in the reverse order of their age, so that only the dates sort them.
+  push_branch fresh Carl 3
+  push_branch late Carl 4
+  push_branch mine Dev 10
+  push_branch stale 'Bob Roy' 72
+  succeeds bash sdd/bin/sdd brief
+  [ ! -s "$out" ]
+  git remote set-head origin main
+  succeeds bash sdd/bin/sdd brief
+  [ "$(cat "$out")" = 'origin/stale waits for a review for 3 days, see Bob Roy.
+origin/late waits for a review for 4 hours, see Carl.' ]
+}
+
+test_brief_says_three_lines_at_most() {
+  git commit -q --amend --no-edit --no-verify --author='Ann Lee <ann.lee@example.test>'
+  remote
+  git remote set-head origin main
+  push_branch late Carl 5
+  push_branch stale 'Bob Roy' 72
+  git worktree add -q "$tmp/other" -b other
+  git worktree add -q "$tmp/third" -b third
+  touch "$tmp/other/QUIZ.md" "$tmp/third/QUIZ.md"
+  succeeds bash sdd/bin/sdd brief search
+  [ "$(sed -n 3p "$out")" = 'origin/stale waits for a review for 3 days, see Bob Roy.' ]
+  lacks 'origin/late'
+  # The dev's first batch in search comes after what waits.
+  [ "$(sed -n 4p "$out")" = 'First batch of yours in search.' ]
+}
+
 test_quiet_hides_a_green_output_and_shows_the_end_of_a_red_one() {
   succeeds bash sdd/bin/sdd quiet seq 100
   [ "$(cat "$out")" = 'ok: seq 100 (100 lines hidden)' ]

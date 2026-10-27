@@ -260,3 +260,13 @@ junior who built it is not.
 _Rejected:_ a junior or senior profile (the agent would judge the person); the quiz results to adapt the help (decision
 29: they measure the module and the question as much as the dev); discovery mode applied without asking (the human
 keeps the hand).
+
+## 34. Name to coordinate, never to measure (2026-10-27)
+
+`sdd brief` tells the dev what waits before they produce more: a quiz in another of their worktrees, then the remote
+branches not merged after `REVIEW_WAIT_HOURS`, oldest first, each with its author's name so the dev knows whom to
+see. The rope team moves at the pace of what it reviews, not of what its agents produce: one dev with several agents
+and two devs reading each other meet the same line. It reads only what git already shows everyone, and never fetches.
+_Rejected:_ a count of branches or waiting hours per dev (it would measure people, decision 32); a fetch at each brief
+(slow, and a network call the dev did not ask for); a block until the reviews are done (the human keeps the hand, and
+a dev alone has no one to wait for).

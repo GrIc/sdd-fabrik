@@ -42,9 +42,14 @@ check can be bypassed.
   [test_the_line_for_a_shared_hook](/test/run).
 - `touched` lists the modules a commit changes, in code or contract, each with its changed lines, so that the token
   ledger can split a batch's cost: [test_touched_lists_each_module_with_its_lines](/test/run).
-- `brief <module>` says when the dev (the author git would write) has no commit yet in the module's contract or
-  governed paths, then names the three devs who delivered there most, to know whom to ask. It says nothing otherwise
-  or for a module not committed yet, and never reads the quiz:
+- `brief [<module>]` prints at most three lines of what waits, without fetching: a quiz in another worktree of the
+  clone, then the remote branches not merged into `origin/HEAD` (none without it) whose last commit is by another dev
+  and at least `REVIEW_WAIT_HOURS` old, oldest first, with their author:
+  [test_brief_shows_quizzes_waiting_in_other_worktrees](/test/run),
+  [test_brief_shows_branches_waiting_for_review_with_their_author](/test/run),
+  [test_brief_says_three_lines_at_most](/test/run). Given a module, it says when the dev (the author git would write)
+  has no commit yet in its contract or governed paths, and names the three devs who delivered there most. It says
+  nothing for a module the dev knows or not committed yet, and never reads a quiz's answers:
   [test_brief_spots_a_dev_s_first_batch_in_a_module](/test/run), [test_brief_is_silent_in_a_known_module](/test/run).
 - `quiet <command>` prints one line when the command passes and its last 30 lines when it fails, with its status:
   [test_quiet_hides_a_green_output_and_shows_the_end_of_a_red_one](/test/run).

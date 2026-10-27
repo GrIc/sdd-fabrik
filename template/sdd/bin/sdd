@@ -9,6 +9,9 @@ MAX_LINES=200
 # first name. Any agent can mark its batch with Agent-Assisted: yes.
 AGENT_EMAILS='noreply@anthropic\.com|noreply@openai\.com|aider@aider\.chat'
 
+# A pushed branch waits for a review once its last commit is this old.
+REVIEW_WAIT_HOURS=4
+
 EMPTY_TREE=$(git hash-object -t tree --stdin < /dev/null)
 
 # Paths with accents print as they are, not as quoted octal escapes.
@@ -419,22 +422,51 @@ install_one() {
   echo "Installed $hook."
 }
 
-# Before a batch in module $1: when it is this dev's first there, says so and who delivered there most, by name, to
-# know whom to ask. Says nothing in a module the dev knows, or one not committed yet.
-brief() {
-  local contract=sdd/modules/$1.md ident authors
+# What waits for the dev, of address $1: a quiz in another worktree of the clone, then the remote branches not merged
+# by another dev, oldest first. It names their author to coordinate, never to measure, and never fetches.
+waiting() {
+  local top path ref
+  top=$(git rev-parse --show-toplevel)
+  git worktree list --porcelain | sed -n 's/^worktree //p' | while IFS= read -r path; do
+    [ "$path" -ef "$top" ] || [ ! -f "$path/QUIZ.md" ] || echo "A quiz waits for your answers in $path."
+  done
+  git rev-parse -q --verify refs/remotes/origin/HEAD > /dev/null || return 0
+  git for-each-ref --no-merged=origin/HEAD --sort=committerdate --format='%(refname)' refs/remotes/origin |
+    while read -r ref; do
+      printf '%s\t' "${ref#refs/remotes/}"
+      git log -1 --format='%ct%x09%aE%x09%aN' "$ref"
+    done |
+    NOW=$(date +%s) ME=$1 awk -F '\t' -v wait="$REVIEW_WAIT_HOURS" '
+      { hours = int((ENVIRON["NOW"] - $2) / 3600) }
+      hours >= wait && tolower($3) != tolower(ENVIRON["ME"]) {
+        print $1 " waits for a review for " (hours < 48 ? hours " hours" : int(hours / 24) " days") ", see " $4 "."
+      }'
+}
+
+# In module $2: when it is the first batch there of the dev of address $1, says so and who delivered there most, by
+# name, to know whom to ask. Says nothing in a module the dev knows, or one not committed yet.
+newcomer() {
+  local contract=sdd/modules/$2.md authors
   git cat-file -e "HEAD:$contract" 2> /dev/null || return 0
-  ident=$(git var GIT_AUTHOR_IDENT)
-  # Through the mailmap, as %aE is.
   authors=$(git log --no-merges --format='%aE%x09%aN' -- "$contract" $(governs "HEAD:$contract") |
-    ME=$(git check-mailmap "${ident%%>*}>" | sed 's/.*<\(.*\)>/\1/') awk -F '\t' '
+    ME=$1 awk -F '\t' '
       tolower($1) == tolower(ENVIRON["ME"]) { known = 1; exit }
       { n[$2]++ }
       END { if (!known) for (name in n) print n[name] "\t" name }' |
     sort -k1,1nr -k2 | head -n 3 | awk -F '\t' '{ printf "%s%s", sep, $2; sep = ", " }')
   [ -n "$authors" ] || return 0
-  echo "First batch of yours in $1."
+  echo "First batch of yours in $2."
   echo "Who delivered there most: $authors."
+}
+
+# Before a batch, in module $1 if given.
+brief() {
+  local ident me
+  ident=$(git var GIT_AUTHOR_IDENT)
+  # Through the mailmap, as %aE is.
+  me=$(git check-mailmap "${ident%%>*}>" | sed 's/.*<\(.*\)>/\1/')
+  waiting "$me" | head -n 3
+  [ -z "$1" ] || newcomer "$me" "$1"
 }
 
 # The quiz checks each commit; the token ledger notes each commit and is shared at each push.
@@ -465,11 +497,11 @@ case ${1:-} in
     echo "key: $(quiz_key)" ;;
   install-hook) install_hook ;;
   touched) touched "${2:-HEAD}" ;;
-  brief) brief "${2:?usage: bash sdd/bin/sdd brief <module>}" ;;
+  brief) brief "${2:-}" ;;
   quiet) shift && quiet "$@" ;;
   *)
     echo 'usage: bash sdd/bin/sdd hook <message-file> | audit [--message <file> | --range <base>..<tip>]' >&2
-    echo '       bash sdd/bin/sdd fingerprint | install-hook | touched [<commit>] | brief <module>' >&2
+    echo '       bash sdd/bin/sdd fingerprint | install-hook | touched [<commit>] | brief [<module>]' >&2
     echo '       bash sdd/bin/sdd quiet <command>...' >&2
     exit 2 ;;
 esac

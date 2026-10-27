@@ -18,16 +18,6 @@ Formats the batches share:
 - Ledger quiz lines, in the same note as the tokens: `q1, <month>, <module>, <tries>, <causes>, <title>, <free text>`,
   tab-separated, one per question and module of the batch. `report` reads `v1` lines as today and ignores the others.
 
-## Belay: the rope team's pace (checks)
-
-- `sdd brief` also prints, at most three lines, nothing when nothing waits: other worktrees of the clone holding a
-  `QUIZ.md`; remote branches not merged into `origin/HEAD`, whose last commit is older than `REVIEW_WAIT_HOURS=4` (top
-  of the script) and not by this dev, oldest first: "<branch> waits for a review for <n> hours|days, see <author>."
-  Without `origin/HEAD`, no branch line. It never fetches: `test_brief_shows_quizzes_waiting_in_other_worktrees`,
-  `test_brief_shows_branches_waiting_for_review_with_their_author`, `test_brief_says_three_lines_at_most`.
-- WORKFLOW step 1: the agent proposes to finish what waits before producing more.
-- Decision: name to coordinate, never to measure.
-
 ## A harness that rewrites itself (cockpit)
 
 - `cockpit hints` also reads the quiz journal, passed by `sdd/bin/cockpit` as a third argument: a module flagged

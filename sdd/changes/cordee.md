@@ -18,15 +18,6 @@ Formats the batches share:
 - Ledger quiz lines, in the same note as the tokens: `q1, <month>, <module>, <tries>, <causes>, <title>, <free text>`,
   tab-separated, one per question and module of the batch. `report` reads `v1` lines as today and ignores the others.
 
-## Belay: a dev's first batch in a module (checks)
-
-- `sdd brief <module>` prints "First batch of yours in <module>." when the clone's `user.email` authored no commit
-  touching the module's contract or governed paths, then who delivered there, the three most frequent authors by name;
-  nothing otherwise: `test_brief_spots_a_dev_s_first_batch_in_a_module`, `test_brief_is_silent_in_a_known_module`.
-- WORKFLOW step 1: the agent runs it and, on that line, offers discovery mode (sum up the contract and its decisions,
-  ask the dev how they would go about it, keep the batch small, ask why rather than which line, suggest pairing with
-  someone named), applied only on a yes. Quiz results are never used.
-
 ## Belay: the rope team's pace (checks)
 
 - `sdd brief` also prints, at most three lines, nothing when nothing waits: other worktrees of the clone holding a

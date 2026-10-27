@@ -42,6 +42,10 @@ check can be bypassed.
   [test_the_line_for_a_shared_hook](/test/run).
 - `touched` lists the modules a commit changes, in code or contract, each with its changed lines, so that the token
   ledger can split a batch's cost: [test_touched_lists_each_module_with_its_lines](/test/run).
+- `brief <module>` says when the dev (the author git would write) has no commit yet in the module's contract or
+  governed paths, then names the three devs who delivered there most, to know whom to ask. It says nothing otherwise
+  or for a module not committed yet, and never reads the quiz:
+  [test_brief_spots_a_dev_s_first_batch_in_a_module](/test/run), [test_brief_is_silent_in_a_known_module](/test/run).
 - `quiet <command>` prints one line when the command passes and its last 30 lines when it fails, with its status:
   [test_quiet_hides_a_green_output_and_shows_the_end_of_a_red_one](/test/run).
 - CI replays drift and size on each new commit, never the quiz: [test_range_checks_each_commit](/test/run).

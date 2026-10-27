@@ -210,6 +210,44 @@ test_touched_lists_each_module_with_its_lines() {
   [ "$(bash sdd/bin/sdd touched)" = "$(printf 'import\t1\nsearch\t3')" ]
 }
 
+# Commits a line in module $1's code as author $2.
+commit_as() {
+  echo "$2" >> "src/$1/a.py"
+  git add -A
+  GIT_AUTHOR_NAME=$2 GIT_AUTHOR_EMAIL=$(tr 'A-Z ' 'a-z.' <<< "$2")@example.test git commit -qm "Change $1" 2> /dev/null
+}
+
+test_brief_spots_a_dev_s_first_batch_in_a_module() {
+  git commit -q --amend --no-edit --no-verify --author='Ann Lee <ann.lee@example.test>'
+  commit_as search 'Bob Roy'
+  commit_as search 'Bob Roy'
+  commit_as search Carl
+  commit_as search Carl
+  commit_as search Carl
+  commit_as search Dan
+  commit_as import Dev
+  succeeds bash sdd/bin/sdd brief search
+  [ "$(cat "$out")" = 'First batch of yours in search.
+Who delivered there most: Carl, Bob Roy, Ann Lee.' ]
+}
+
+test_brief_is_silent_in_a_known_module() {
+  git commit -q --amend --no-edit --no-verify --author='Ann Lee <ann.lee@example.test>'
+  commit_as search Carl
+  # The dev's own commit, under another case of the same address.
+  echo dev >> src/search/a.py
+  git add -A
+  GIT_AUTHOR_EMAIL=DEV@example.test git commit -qm 'Change search' 2> /dev/null
+  succeeds bash sdd/bin/sdd brief search
+  [ ! -s "$out" ]
+  # A mailmap that moves the dev to a new address maps their own identity too.
+  echo 'Dev <dev@new.test> <dev@example.test>' > .mailmap
+  succeeds bash sdd/bin/sdd brief search
+  [ ! -s "$out" ]
+  succeeds bash sdd/bin/sdd brief nothing
+  [ ! -s "$out" ]
+}
+
 test_quiet_hides_a_green_output_and_shows_the_end_of_a_red_one() {
   succeeds bash sdd/bin/sdd quiet seq 100
   [ "$(cat "$out")" = 'ok: seq 100 (100 lines hidden)' ]

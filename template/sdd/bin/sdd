@@ -419,6 +419,24 @@ install_one() {
   echo "Installed $hook."
 }
 
+# Before a batch in module $1: when it is this dev's first there, says so and who delivered there most, by name, to
+# know whom to ask. Says nothing in a module the dev knows, or one not committed yet.
+brief() {
+  local contract=sdd/modules/$1.md ident authors
+  git cat-file -e "HEAD:$contract" 2> /dev/null || return 0
+  ident=$(git var GIT_AUTHOR_IDENT)
+  # Through the mailmap, as %aE is.
+  authors=$(git log --no-merges --format='%aE%x09%aN' -- "$contract" $(governs "HEAD:$contract") |
+    ME=$(git check-mailmap "${ident%%>*}>" | sed 's/.*<\(.*\)>/\1/') awk -F '\t' '
+      tolower($1) == tolower(ENVIRON["ME"]) { known = 1; exit }
+      { n[$2]++ }
+      END { if (!known) for (name in n) print n[name] "\t" name }' |
+    sort -k1,1nr -k2 | head -n 3 | awk -F '\t' '{ printf "%s%s", sep, $2; sep = ", " }')
+  [ -n "$authors" ] || return 0
+  echo "First batch of yours in $1."
+  echo "Who delivered there most: $authors."
+}
+
 # The quiz checks each commit; the token ledger notes each commit and is shared at each push.
 install_hook() {
   local exclude status=0
@@ -447,9 +465,11 @@ case ${1:-} in
     echo "key: $(quiz_key)" ;;
   install-hook) install_hook ;;
   touched) touched "${2:-HEAD}" ;;
+  brief) brief "${2:?usage: bash sdd/bin/sdd brief <module>}" ;;
   quiet) shift && quiet "$@" ;;
   *)
     echo 'usage: bash sdd/bin/sdd hook <message-file> | audit [--message <file> | --range <base>..<tip>]' >&2
-    echo '       bash sdd/bin/sdd fingerprint | install-hook | touched [<commit>] | quiet <command>...' >&2
+    echo '       bash sdd/bin/sdd fingerprint | install-hook | touched [<commit>] | brief <module>' >&2
+    echo '       bash sdd/bin/sdd quiet <command>...' >&2
     exit 2 ;;
 esac

@@ -250,3 +250,13 @@ anyone being named.
 _Rejected:_ the rate per dev (it measures the module and the question as much as the dev, decision 29, and names
 them); the authors' names per module (the count tells who to train or pair, `git log` already tells who); a score per
 module (one number would hide whether the code or the quiz is at fault).
+
+## 33. A dev new to a module is spotted from git, never from the quiz (2026-10-27)
+
+`sdd brief <module>` tells a dev's first batch in a module from the history alone: no commit of theirs in its contract
+or governed paths. The agent then offers a discovery mode, applied only on a yes, and names the devs who delivered
+there most so the dev knows whom to ask. Seniority is never guessed: a senior new to a module is new to it, and a
+junior who built it is not.
+_Rejected:_ a junior or senior profile (the agent would judge the person); the quiz results to adapt the help (decision
+29: they measure the module and the question as much as the dev); discovery mode applied without asking (the human
+keeps the hand).

@@ -18,15 +18,6 @@ Formats the batches share:
 - Ledger quiz lines, in the same note as the tokens: `q1, <month>, <module>, <tries>, <causes>, <title>, <free text>`,
   tab-separated, one per question and module of the batch. `report` reads `v1` lines as today and ignores the others.
 
-## Quiz journal and the quiz feedback call (checks)
-
-- Each graded try appends its lines to the quiz journal, in the format above, the modules being those whose governed
-  paths or contract the batch changes: `test_each_try_appends_to_the_quiz_journal`. Worktrees of a clone share it:
-  `test_worktrees_share_the_quiz_journal`.
-- `AGENTS.md` kit block: "quiz feedback" from the dev means read `QUIZ.md` and the journal's lines for this batch's
-  fingerprint, talk the questions through, propose a fix to the batch and, when the question or a guide is at fault, a
-  change to the harness, made only on a yes.
-
 ## Quiz by risk (checks)
 
 - A contract may declare `risk: high` in its front matter. A batch that changes the governed paths or contract of such

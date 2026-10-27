@@ -216,3 +216,14 @@ _Rejected:_ the quiz in the chat with the agent (tokens on every batch, the agen
 tool); new questions after a failure (one more round trip, nobody knows what to do next); the error rate as a measure
 of what a dev knows (it measures the module and the question as much as the dev); intent questions inside the quiz
 (they belong before and during the build).
+
+## 30. The quiz journal stays on the dev's machine (2026-10-27)
+
+The quiz journal keeps, on the dev's machine, every graded try with what the dev ticked and wrote: the tries, the
+causes, the question's title. It lives in the common git dir, so a dev working several batches in worktrees has one
+journal, and it is never pushed. The ledger takes the passed quizzes from it without a name, the cockpit reads it for
+its hints, and the agent reads it when the dev types *quiz feedback*: a keyword in `AGENTS.md`, so any tool that reads
+the file answers it, and the agent spends nothing until the dev asks.
+_Rejected:_ the merge request as the channel for feedback (it names its author); sending the agent the feedback at each
+failure (tokens on every wrong answer, and the dev did not ask); a slash command (tied to one tool); a global switch for
+learning (the journal stays local, the ledger already has `sdd.ledger false`).

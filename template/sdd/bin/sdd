@@ -49,10 +49,11 @@ touched() {
 }
 
 # Checks the change from $1 to $2 (commits or trees) under the commit message $3.
-# Sets changed (the changed files), errors (fatal for everyone), findings (fatal for agents only) and notes.
+# Sets changed (the changed files), hit (the modules whose code or contract changed, joined by ","), errors (fatal
+# for everyone), findings (fatal for agents only) and notes.
 check() {
-  local base=$1 tree=$2 msg=$3 module contract paths drift hit touched=0 lines
-  errors= findings= notes=
+  local base=$1 tree=$2 msg=$3 module contract paths path drift touched=0 lines
+  errors= findings= notes= hit=
   changed=$(git diff --name-only --no-renames "$base" "$tree")
   for module in $(sed -n 's/^Spec-Unchanged(\([^)]*\)):.*/\1/p' <<< "$msg"); do
     git cat-file -e "$tree:sdd/modules/$module.md" 2> /dev/null ||
@@ -71,12 +72,13 @@ check() {
     [ -z "$drift" ] || findings="${findings}$drift
       Fix the link, or the name of the test it points to.
 "
-    hit=$(git diff --name-only --no-renames "$base" "$tree" -- $paths | head -n 1)
-    [ -n "$hit" ] || continue
+    path=$(git diff --name-only --no-renames "$base" "$tree" -- $paths | head -n 1)
+    if [ -n "$path" ] || grep -qxF "$contract" <<< "$changed"; then hit=$hit${hit:+,}$module; fi
+    [ -n "$path" ] || continue
     grep -q "^Spec-Unchanged($module):[[:space:]]*[^[:space:]]" <<< "$msg" && continue
     touched=$((touched + 1))
     grep -qxF "$contract" <<< "$changed" && continue
-    findings="${findings}DRIFT $contract: $hit changed, its contract did not.
+    findings="${findings}DRIFT $contract: $path changed, its contract did not.
       Update the contract if the code is right, fix the code if it betrays the intent,
       or add 'Spec-Unchanged($module): <reason>' to the message if the behavior is unchanged.
 "
@@ -200,9 +202,35 @@ feedback() {
   mv QUIZ.tmp QUIZ.md
 }
 
-# Checks the boxes ticked in QUIZ.md against the reviewer's key. Needs changed, set by check.
+# Appends to the quiz journal one line per question of this try, of kind $1 (try or pass), $2 telling right from wrong
+# answers (R or W, one per question). The journal stays on this machine, shared by the clone's worktrees; the ledger
+# and the cockpit read it.
+journal() {
+  local file
+  file=$(git rev-parse --git-common-dir)/sdd/quiz-journal
+  mkdir -p "$(dirname "$file")"
+  tr -d '\r' < QUIZ.md | awk -v kind="$1" -v grades="$2" -v now="$(date +%s)" -v fp="$(fingerprint)" \
+    -v modules="${hit:--}" '
+    function cause(name) { causes = causes (causes == "" ? "" : ",") name }
+    function out() {
+      if (!q) return
+      gsub(/\t/, " ", title)
+      gsub(/\t/, " ", other)
+      printf "v1\t%s\t%s\t%s\t%s\t%d\t%d\t%s\t%s\t%s\n", now, kind, fp, modules, q,
+        wrong + (substr(grades, q, 1) == "R"), causes == "" ? "-" : causes, title, other == "" ? "-" : other
+    }
+    /^## / { out(); q++; title = $0; sub(/^## ([0-9]+\. )?/, "", title); wrong = 0; causes = other = ""; next }
+    /^> Wrong, [0-9]+ tr/ { split($0, w, " "); wrong = w[3] }
+    /^> - \[[xX]\] I had not understood/ { cause("not-understood") }
+    /^> - \[[xX]\] The question is unclear/ { cause("unclear") }
+    /^> - \[[xX]\] The code does not do/ { cause("not-wanted") }
+    /^> - Other:/ { other = substr($0, 11); sub(/^[[:space:]]+/, "", other) }
+    END { out() }' >> "$file"
+}
+
+# Checks the boxes ticked in QUIZ.md against the reviewer's key. Needs changed and hit, set by check.
 quiz() {
-  local key wrong= i boxes ticks pick see expected hint
+  local key wrong= grades= i boxes ticks pick see expected hint
   key=$(quiz_key)
   [ -f QUIZ.md ] ||
     fail 'No quiz for this agent-assisted batch: ask the fresh reviewer for QUIZ.md (see sdd/WORKFLOW.md).'
@@ -210,15 +238,22 @@ quiz() {
   while read -r i boxes ticks pick see; do
     [ "$ticks" -eq 1 ] || fail "Tick exactly one box for question $i in QUIZ.md, save, then commit again."
     expected=$(sed -n "$((i + 1))p" "$key" | tr -d '\r')
-    if [ "$pick" != "${expected%% *}" ]; then
+    if [ "$pick" = "${expected%% *}" ]; then
+      grades=${grades}R
+    else
+      grades=${grades}W
       hint=${expected:1}
       wrong="$wrong$i	${hint# }
 "
       echo "Question $i is wrong: a hint is in QUIZ.md." >&2
     fi
   done <<< "$(questions)"
-  [ -n "$wrong" ] || return 0
+  if [ -z "$wrong" ]; then
+    journal pass "$grades"
+    return 0
+  fi
   feedback "$wrong"
+  journal try "$grades"
   fail "$((3 - $(grep -c . <<< "$wrong")))/3. Fix your answers in QUIZ.md, save, then commit again."
 }
 

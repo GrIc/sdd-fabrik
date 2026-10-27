@@ -93,6 +93,12 @@ The commit fails until all three boxes are right. Under each wrong question, the
 does not do what they wanted). The boxes never change the grade. If the batch changed since the quiz was written, the
 hook only warns: ask for a new quiz when the changes touch what it asks.
 
+Each graded try appends one line per question to `$(git rev-parse --git-common-dir)/sdd/quiz-journal`, on this
+machine only and shared by the clone's worktrees: tab-separated, `v1`, the time in epoch seconds, `try` or `pass`, the
+batch fingerprint, its modules (joined by `,`, or `-`), the question's number, the tries until right, the boxes ticked
+(`not-understood`, `unclear`, `not-wanted`, joined by `,`, or `-`), the question's title and the dev's own words (or
+`-`).
+
 ## Contracts
 
 ```markdown

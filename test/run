@@ -432,6 +432,34 @@ test_feedback_never_changes_the_grade() {
   git log -1 --format=%B | grep -qx 'Quiz: 3/3'
 }
 
+journal() { cat "$(git rev-parse --git-common-dir)/sdd/quiz-journal"; }
+
+test_each_try_appends_to_the_quiz_journal() {
+  batch
+  write_quiz src/search/a.py 'A B C'
+  answer A C C
+  fails agent_commit 'Change search'
+  [ "$(journal | awk -F '\t' '$1 == "v1" && $2 ~ /^[0-9]+$/ && $3 == "try" && $5 == "search"' | wc -l)" -eq 3 ]
+  [ "$(journal | awk -F '\t' '$6 == 2 { print $7, $8, $9, $10 }')" = '1 - Question 2? -' ]
+  sed -e 's/^> - \[ \] The question is unclear/> - [x] The question is unclear/' \
+    -e 's/^> - Other:$/> - Other: too long/' QUIZ.md > QUIZ.tmp && mv QUIZ.tmp QUIZ.md
+  answer A B C
+  succeeds agent_commit 'Change search'
+  [ "$(journal | wc -l)" -eq 6 ]
+  [ "$(journal | awk -F '\t' '$3 == "pass" && $6 == 2 { print $7, $8, $9, $10 }')" = '2 unclear Question 2? too long' ]
+  [ "$(journal | awk -F '\t' '$3 == "pass" && $6 == 1 { print $7, $8 }')" = '1 -' ]
+}
+
+test_worktrees_share_the_quiz_journal() {
+  git worktree add -q "$tmp/other" -b other
+  cd "$tmp/other"
+  batch
+  write_quiz src/search/a.py 'A B C'
+  answer A B C
+  succeeds agent_commit 'Change search'
+  [ "$(grep -c '	pass	' "$tmp/repo/.git/sdd/quiz-journal")" -eq 3 ]
+}
+
 test_a_quiz_older_than_the_batch_only_warns() {
   batch
   write_quiz src/search/a.py 'A B C'

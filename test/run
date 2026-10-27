@@ -379,12 +379,57 @@ test_wrong_answer_explains_then_a_retry_passes() {
   write_quiz src/search/a.py 'A B C'
   answer A C C
   fails agent_commit 'Change search'
-  says 'Question 2 is wrong. Because of B.'
-  says 'Reread src/search/a.py:1'
-  says '2/3.'
+  says 'Question 2 is wrong: a hint is in QUIZ.md.'
+  lacks 'Because of B.'
+  says '2/3. Fix your answers in QUIZ.md'
   [ -e QUIZ.md ]
   answer A B C
   succeeds agent_commit 'Change search'
+}
+
+# The lines of question $1 in QUIZ.md, up to the next question.
+question() { awk -v q="$1" '/^## / { n++ } n == q' QUIZ.md; }
+
+test_a_wrong_answer_writes_a_hint_block_in_the_quiz() {
+  batch
+  write_quiz src/search/a.py 'A B C'
+  answer A C C
+  fails agent_commit 'Change search'
+  question 2 | grep -qxF '> Wrong, 1 try. Hint: Because of B.'
+  question 2 | grep -qxF '> - [ ] The question is unclear'
+  ! question 2 | grep -qF 'type *quiz feedback* to your agent to clear it up'
+  ! question 1 | grep -q '^>'
+  [ "$(grep -c '^## ' QUIZ.md)" -eq 3 ]
+  fails agent_commit 'Change search'
+  question 2 | grep -qxF '> Wrong, 2 tries. Hint: Because of B.'
+  question 2 | grep -qxF '> 2 tries on this question: type *quiz feedback* to your agent to clear it up.'
+  [ "$(grep -c '^> Wrong' QUIZ.md)" -eq 1 ]
+}
+
+test_a_new_try_keeps_the_feedback_ticked() {
+  batch
+  write_quiz src/search/a.py 'A B C'
+  answer A C C
+  fails agent_commit 'Change search'
+  sed -e 's/^> - \[ \] The question is unclear/> - [x] The question is unclear/' \
+    -e 's/^> - Other:$/> - Other: too long/' QUIZ.md > QUIZ.tmp && mv QUIZ.tmp QUIZ.md
+  fails agent_commit 'Change search'
+  question 2 | grep -qxF '> - [x] The question is unclear'
+  question 2 | grep -qxF '> - [ ] I had not understood the code'
+  question 2 | grep -qxF '> - Other: too long'
+}
+
+test_feedback_never_changes_the_grade() {
+  batch
+  write_quiz src/search/a.py 'A B C'
+  answer A C C
+  fails agent_commit 'Change search'
+  sed 's/^> - \[ \] The code does not do/> - [x] The code does not do/' QUIZ.md > QUIZ.tmp && mv QUIZ.tmp QUIZ.md
+  fails agent_commit 'Change search'
+  says 'Question 2 is wrong'
+  answer A B C
+  succeeds agent_commit 'Change search'
+  git log -1 --format=%B | grep -qx 'Quiz: 3/3'
 }
 
 test_a_quiz_older_than_the_batch_only_warns() {

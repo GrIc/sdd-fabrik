@@ -23,9 +23,13 @@ check can be bypassed.
   [test_two_modules_block_an_agent](/test/run), [test_large_batch_lifts_both_limits](/test/run).
 - Quiz: three questions on the staged batch in `QUIZ.md`, graded offline against a key:
   [test_quiz_passed_adds_the_trailer_and_cleans_up](/test/run),
-  [test_wrong_answer_explains_then_a_retry_passes](/test/run). `audit` checks its form, so that the reviewer, not the
-  human, meets a malformed quiz: [test_audit_checks_the_quiz_before_the_human](/test/run),
-  [test_a_see_line_may_cite_more_places](/test/run).
+  [test_wrong_answer_explains_then_a_retry_passes](/test/run). A wrong answer prints one line, and writes under its
+  question a quoted block the parser skips: the tries, the key's hint, from the second try a call to type *quiz
+  feedback* to the agent, and optional boxes to say why. A new try keeps what the dev ticked and wrote; the boxes never
+  change the grade: [test_a_wrong_answer_writes_a_hint_block_in_the_quiz](/test/run),
+  [test_a_new_try_keeps_the_feedback_ticked](/test/run), [test_feedback_never_changes_the_grade](/test/run). `audit`
+  checks its form, so that the reviewer, not the human, meets a malformed quiz:
+  [test_audit_checks_the_quiz_before_the_human](/test/run), [test_a_see_line_may_cite_more_places](/test/run).
 - `install-hook` writes the `commit-msg`, `post-commit` and `pre-push` hooks, or prints the line to add to a hook it
   did not write; each line passes in a repo without the harness. It says how to turn the ledger off:
   [test_install_hook_respects_an_existing_hook](/test/run),

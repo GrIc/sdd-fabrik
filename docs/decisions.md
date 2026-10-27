@@ -203,3 +203,16 @@ one shown waits 10 batches before it comes back, so that most handoffs read an e
 changing the setup on its own (MCP servers and plugins are the dev's, often for other repos); a hint at every batch
 (the dev stops reading them); a window in days (a week is 30 batches for one dev and 2 for another); hints judged on
 quality (the logs show what is used, not what it is worth).
+
+## 29. A wrong quiz answer gets a hint and a way to say why (2026-10-26)
+
+The quiz learns from the dev instead of only grading them. Under a wrong question, the hook writes in `QUIZ.md` the
+key's hint and optional boxes: not understood, question unclear, the code does not do what I wanted. A wrong answer
+often shows a gap of intent, not of the dev: the owner, answering from what they had asked for, found an implementation
+that was not what he wanted. From the second try, the block invites the dev to type *quiz feedback* to the agent.
+Nothing there blocks or allows a commit: the human keeps the last word. The terminal shows one line per wrong question,
+the hint stays in the file next to its question. Hints point where to look and never name the box.
+_Rejected:_ the quiz in the chat with the agent (tokens on every batch, the agent becomes the judge, tied to one
+tool); new questions after a failure (one more round trip, nobody knows what to do next); the error rate as a measure
+of what a dev knows (it measures the module and the question as much as the dev); intent questions inside the quiz
+(they belong before and during the build).

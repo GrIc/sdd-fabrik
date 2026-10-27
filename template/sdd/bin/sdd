@@ -163,9 +163,46 @@ quiz_form() {
   done <<< "$(questions)"
 }
 
+# Writes under each wrong question of QUIZ.md a quoted block, which the parser skips: its tries, the key's hint, and
+# optional boxes for the dev to say why. A new try counts up and keeps what the dev ticked and wrote.
+# $1: one line per wrong question, its number, a tab and its hint.
+feedback() {
+  tr -d '\r' < QUIZ.md | WRONG=$1 awk '
+    BEGIN {
+      n = split(ENVIRON["WRONG"], rows, "\n")
+      for (i = 1; i <= n; i++) if (split(rows[i], f, "\t") == 2) hint[f[1]] = f[2]
+      split("I had not understood the code|The question is unclear|The code does not do what I wanted: check" \
+        " this box and type *quiz feedback* to your agent to clarify", causes, "|")
+    }
+    function flush(   i, last, tries) {
+      if (!(q in hint)) { for (i = 1; i <= lines; i++) print buf[i]; lines = 0; return }
+      tries = 1
+      for (i = 1; i <= lines; i++) {
+        if (buf[i] ~ /^> Wrong, [0-9]+ tr/) { split(buf[i], w, " "); tries = w[3] + 1 }
+        if (buf[i] ~ /^> - \[[xX]\] /) ticked[substr(buf[i], 9)] = 1
+        if (buf[i] ~ /^> - Other:/) other = substr(buf[i], 11)
+      }
+      for (last = lines; last > 0 && (buf[last] == "" || buf[last] ~ /^>/); last--) ;
+      for (i = 1; i <= last; i++) print buf[i]
+      print ""
+      printf "> Wrong, %d %s.%s\n", tries, tries == 1 ? "try" : "tries", hint[q] == "" ? "" : " Hint: " hint[q]
+      if (tries > 1) printf "> %d tries on this question: type *quiz feedback* to your agent to clear it up.\n", tries
+      print ">"
+      print "> Optional, why? (shared without your name)"
+      for (i = 1; i <= 3; i++) printf "> - [%s] %s\n", ticked[causes[i]] ? "x" : " ", causes[i]
+      print "> - Other:" other
+      if (!end) print ""
+      lines = 0; other = ""; delete ticked
+    }
+    /^## / { flush(); q++ }
+    { buf[++lines] = $0 }
+    END { end = 1; flush() }' > QUIZ.tmp
+  mv QUIZ.tmp QUIZ.md
+}
+
 # Checks the boxes ticked in QUIZ.md against the reviewer's key. Needs changed, set by check.
 quiz() {
-  local key wrong=0 i boxes ticks pick see expected
+  local key wrong= i boxes ticks pick see expected hint
   key=$(quiz_key)
   [ -f QUIZ.md ] ||
     fail 'No quiz for this agent-assisted batch: ask the fresh reviewer for QUIZ.md (see sdd/WORKFLOW.md).'
@@ -174,11 +211,15 @@ quiz() {
     [ "$ticks" -eq 1 ] || fail "Tick exactly one box for question $i in QUIZ.md, save, then commit again."
     expected=$(sed -n "$((i + 1))p" "$key" | tr -d '\r')
     if [ "$pick" != "${expected%% *}" ]; then
-      wrong=$((wrong + 1))
-      printf 'Question %s is wrong. %s\n  Reread %s\n' "$i" "${expected#* }" "$see" >&2
+      hint=${expected:1}
+      wrong="$wrong$i	${hint# }
+"
+      echo "Question $i is wrong: a hint is in QUIZ.md." >&2
     fi
   done <<< "$(questions)"
-  [ "$wrong" -eq 0 ] || fail "$((3 - wrong))/3. Change your answers in QUIZ.md, save, then commit again."
+  [ -n "$wrong" ] || return 0
+  feedback "$wrong"
+  fail "$((3 - $(grep -c . <<< "$wrong")))/3. Fix your answers in QUIZ.md, save, then commit again."
 }
 
 # Drift between contract $2 and the tests it links, in tree $1: a linked file the tree lacks, or a name the file lacks.

@@ -80,15 +80,18 @@ says so; one that cannot pick a model or resume a sub-agent skips that.
   ```
 
 - the key, at the printed path: the fingerprint, then one line per question with the right letter (A for the first
-  box) and the explanation shown after a wrong answer.
+  box) and a hint for a wrong answer: where to look, never which box. No question asks for a computation nobody does
+  when reading code.
 
   ```
   3f2a9c...
   A "30" after hours counts as minutes.
   ```
 
-The commit fails until all three boxes are right; each wrong answer shows its explanation. If the batch changed
-since the quiz was written, the hook only warns: ask for a new quiz when the changes touch what it asks.
+The commit fails until all three boxes are right. Under each wrong question, the hook writes a quoted block in
+`QUIZ.md`: the tries, the hint, and optional boxes for the dev to say why (not understood, question unclear, the code
+does not do what they wanted). The boxes never change the grade. If the batch changed since the quiz was written, the
+hook only warns: ask for a new quiz when the changes touch what it asks.
 
 ## Contracts
 
